@@ -27,7 +27,10 @@ fn create_test_event(
     event_id: String,
 ) {
     let payment_address = Address::generate(env);
-    let metadata_cid = String::from_str(env, "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi");
+    let metadata_cid = String::from_str(
+        env,
+        "bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi",
+    );
 
     let mut tiers = Map::new(env);
     let tier = TicketTier {
@@ -120,7 +123,7 @@ fn test_assign_role_by_admin() {
 }
 
 #[test]
-#[should_panic(expected = "Unauthorized")]
+#[should_panic(expected = "Error(Contract, #3)")]
 fn test_assign_role_by_manager_fails() {
     let (env, client, _admin, _platform_wallet, _usdc_token) = setup_test_env();
 
@@ -143,7 +146,7 @@ fn test_assign_role_by_manager_fails() {
 }
 
 #[test]
-#[should_panic(expected = "Unauthorized")]
+#[should_panic(expected = "Error(Contract, #3)")]
 fn test_assign_role_by_scanner_fails() {
     let (env, client, _admin, _platform_wallet, _usdc_token) = setup_test_env();
 
@@ -166,7 +169,7 @@ fn test_assign_role_by_scanner_fails() {
 }
 
 #[test]
-#[should_panic(expected = "Unauthorized")]
+#[should_panic(expected = "Error(Contract, #3)")]
 fn test_cannot_assign_role_to_organizer() {
     let (env, client, _admin, _platform_wallet, _usdc_token) = setup_test_env();
 
@@ -296,7 +299,7 @@ fn test_manager_can_pause_event() {
 }
 
 #[test]
-#[should_panic(expected = "Unauthorized")]
+#[should_panic(expected = "Error(Contract, #3)")]
 fn test_scanner_cannot_pause_event() {
     let (env, client, _admin, _platform_wallet, _usdc_token) = setup_test_env();
 
