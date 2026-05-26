@@ -91,7 +91,7 @@ impl MockEventRegistry {
             payment_address: Address::generate(&env),
             platform_fee_percent: 500,
             custom_fee_bps: None, // 5%
-            referral_rate_bps: 0
+            referral_rate_bps: 0,
         }
     }
 
@@ -190,7 +190,7 @@ impl MockEventRegistry2 {
             payment_address: Address::generate(&env),
             platform_fee_percent: 250,
             custom_fee_bps: None, // 2.5%
-            referral_rate_bps: 0
+            referral_rate_bps: 0,
         }
     }
 
@@ -273,7 +273,7 @@ impl MockAuctionEventRegistry {
             payment_address: Address::generate(&env),
             platform_fee_percent: 500,
             custom_fee_bps: None,
-            referral_rate_bps: 0
+            referral_rate_bps: 0,
         }
     }
 
@@ -1320,7 +1320,7 @@ impl MockEventRegistryWithInventory {
             payment_address: Address::generate(&env),
             platform_fee_percent: 500,
             custom_fee_bps: None,
-            referral_rate_bps: 0
+            referral_rate_bps: 0,
         }
     }
 
@@ -1571,7 +1571,7 @@ impl MockEventRegistryWithMilestones {
             payment_address: Address::generate(&env),
             platform_fee_percent: 500,
             custom_fee_bps: None,
-            referral_rate_bps: 0
+            referral_rate_bps: 0,
         }
     }
 
@@ -2018,7 +2018,7 @@ impl MockEventRegistryEarlyBird {
             payment_address: Address::generate(&env),
             platform_fee_percent: 500,
             custom_fee_bps: None, // 5%
-            referral_rate_bps: 0
+            referral_rate_bps: 0,
         }
     }
 
@@ -2571,7 +2571,7 @@ impl MockEventRegistryWithOrganizer {
             payment_address: Address::generate(&env),
             platform_fee_percent: 500,
             custom_fee_bps: None,
-            referral_rate_bps: 0
+            referral_rate_bps: 0,
         }
     }
 
@@ -3031,7 +3031,7 @@ impl MockPlatformRegistryE2E {
             payment_address: event.payment_address,
             platform_fee_percent: event.platform_fee_percent,
             custom_fee_bps: None,
-            referral_rate_bps: 0
+            referral_rate_bps: 0,
         }
     }
 
@@ -3475,7 +3475,7 @@ impl MockEventRegistryRefund {
             payment_address: Address::generate(&env),
             platform_fee_percent: 500,
             custom_fee_bps: None,
-            referral_rate_bps: 0
+            referral_rate_bps: 0,
         }
     }
 
@@ -3562,7 +3562,7 @@ impl MockEventRegistryWithResaleCap {
             payment_address: Address::generate(&env),
             platform_fee_percent: 500,
             custom_fee_bps: None,
-            referral_rate_bps: 0
+            referral_rate_bps: 0,
         }
     }
 
@@ -3869,7 +3869,7 @@ impl MockRegistryZeroCap {
             payment_address: Address::generate(&env),
             platform_fee_percent: 500,
             custom_fee_bps: None,
-            referral_rate_bps: 0
+            referral_rate_bps: 0,
         }
     }
 
@@ -4541,7 +4541,7 @@ impl MockEventRegistryUsdPriced {
             payment_address: Address::generate(&env),
             platform_fee_percent: 500,
             custom_fee_bps: None, // 5%
-            referral_rate_bps: 0
+            referral_rate_bps: 0,
         }
     }
 
@@ -5386,7 +5386,7 @@ impl MockEventRegistryWithFailingLoyaltyUpdate {
             payment_address: Address::generate(&env),
             platform_fee_percent: 500,
             custom_fee_bps: None,
-            referral_rate_bps: 0
+            referral_rate_bps: 0,
         }
     }
 }
@@ -5534,7 +5534,7 @@ impl MockEventRegistryWithLoyalty {
             payment_address: Address::generate(&env),
             platform_fee_percent: 500,
             custom_fee_bps: None,
-            referral_rate_bps: 0
+            referral_rate_bps: 0,
         }
     }
 }
@@ -5629,7 +5629,7 @@ impl MockEventRegistryWithExcessiveLoyaltyDiscount {
             payment_address: Address::generate(&env),
             platform_fee_percent: 500,
             custom_fee_bps: None,
-            referral_rate_bps: 0
+            referral_rate_bps: 0,
         }
     }
 }
@@ -5790,7 +5790,7 @@ impl MockEventRegistryCustomFee {
             payment_address: Address::generate(&env),
             platform_fee_percent: 500,
             custom_fee_bps: Some(100), // 1%
-            referral_rate_bps: 0
+            referral_rate_bps: 0,
         }
     }
 
@@ -5936,7 +5936,7 @@ impl MockEventRegistryHighPrice {
             payment_address: Address::generate(&env),
             platform_fee_percent: 500,
             custom_fee_bps: None,
-            referral_rate_bps: 0
+            referral_rate_bps: 0,
         }
     }
 
@@ -6064,7 +6064,7 @@ impl MockEventRegistryRefundDeadline {
             payment_address: Address::generate(&env),
             platform_fee_percent: 500,
             custom_fee_bps: None,
-            referral_rate_bps: 0
+            referral_rate_bps: 0,
         }
     }
 
@@ -6698,7 +6698,7 @@ impl MockEventRegistryForDust {
             payment_address: Address::generate(&env),
             platform_fee_percent: 500,
             custom_fee_bps: None,
-            referral_rate_bps: 0
+            referral_rate_bps: 0,
         }
     }
 
@@ -6998,7 +6998,7 @@ impl MockEventRegistryForReferral {
             payment_address: Address::generate(&env),
             platform_fee_percent: 500,
             custom_fee_bps: None,
-            referral_rate_bps: 0
+            referral_rate_bps: 0,
         }
     }
 }
@@ -7093,7 +7093,7 @@ impl MockEventRegistryFullLoyaltyDiscount {
             payment_address: Address::generate(&env),
             platform_fee_percent: 500,
             custom_fee_bps: None,
-            referral_rate_bps: 0
+            referral_rate_bps: 0,
         }
     }
 }
@@ -8373,7 +8373,6 @@ fn setup_transfer_lock_test(env: &Env) -> (TicketPaymentContractClient<'static>,
 
     (client, usdc_id, registry_id)
 }
-
 
 /// A ticket purchased while a 1-hour transfer lock is active must return
 /// NonTransferable when a transfer is attempted immediately after purchase.
