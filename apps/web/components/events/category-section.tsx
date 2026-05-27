@@ -116,6 +116,7 @@ export function CategorySection({ onError }: CategorySectionProps) {
               categoriesToRender.map((category) => (
               <motion.div key={category.name} variants={item}>
                 <button
+                  type="button"
                   style={{ backgroundColor: category.color }}
                   className={`
                     flex items-center gap-2 px-[26px] py-[13px] rounded-full border-2 border-black

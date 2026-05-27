@@ -126,7 +126,7 @@ export default function CreateEventPage() {
 
             <div className="flex flex-col w-full gap-4 mt-4">
               <Link href={`/events/${createdEventId?.replace("evt_", "")}`} className="w-full">
-                <button className="w-full bg-[#FDDA23] text-black font-bold text-xl h-16 rounded-full border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center justify-center gap-3">
+                <button type="button" className="w-full bg-[#FDDA23] text-black font-bold text-xl h-16 rounded-full border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center justify-center gap-3">
                   <span>View Event</span>
                   <ExternalLink size={24} />
                 </button>

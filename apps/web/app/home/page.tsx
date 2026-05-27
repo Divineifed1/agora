@@ -261,6 +261,7 @@ function AnimatedToggle<T extends string>({
     <div className="inline-flex w-fit items-center bg-white rounded-full p-1 sm:p-1.5 ">
       {tabs.map((tab) => (
         <button
+          type="button"
           key={tab.id}
           onClick={() => onTabChange(tab.id)}
           className="relative px-3 transition-all ease-in-out sm:px-5 py-1.5 sm:py-2 text-[13px] sm:text-[15px] font-medium  duration-200 z-10  flex items-center justify-center gap-2.5 flex-row"
@@ -577,7 +578,7 @@ function MyEventsContent({ activeTab }: { activeTab: MyEventsTab }) {
         <div className="flex flex-col items-center gap-4">
           <p className="text-xl font-medium leading-5.5 text-center">Nothing Here, Yet</p>
           <Link href="/create-event">
-            <button className="bg-black text-white px-6 py-2 rounded-full font-medium shadow-[-4px_4px_0_rgba(0,0,0,0.2)] hover:shadow-none hover:translate-x-[-2px] hover:translate-y-[2px] transition-all">
+            <button type="button" className="bg-black text-white px-6 py-2 rounded-full font-medium shadow-[-4px_4px_0_rgba(0,0,0,0.2)] hover:shadow-none hover:translate-x-[-2px] hover:translate-y-[2px] transition-all">
               Create Your First Event
             </button>
           </Link>

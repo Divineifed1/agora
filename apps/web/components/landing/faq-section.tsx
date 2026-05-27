@@ -73,6 +73,7 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
   return (
     <div className="w-full bg-[#060606] rounded-2xl overflow-hidden transition-all duration-300">
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between p-6 text-left"
       >

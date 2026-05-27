@@ -100,6 +100,7 @@ export function TicketModal({ isOpen, onClose, event, initialQuantity }: TicketM
           >
             {/* Close Button */}
             <button
+              type="button"
               onClick={onClose}
               className="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/50 hover:bg-white transition-colors flex items-center justify-center border border-black/5 z-10"
             >
@@ -126,6 +127,7 @@ export function TicketModal({ isOpen, onClose, event, initialQuantity }: TicketM
                     <span className="text-lg font-bold text-black">Quantity</span>
                     <div className="flex items-center gap-4">
                       <button
+                        type="button"
                         onClick={() => setQuantity(Math.max(1, quantity - 1))}
                         className="w-10 h-10 rounded-full bg-white border border-black/10 flex items-center justify-center hover:bg-[#FDDA23] transition-colors"
                       >
@@ -133,6 +135,7 @@ export function TicketModal({ isOpen, onClose, event, initialQuantity }: TicketM
                       </button>
                       <span className="text-xl font-bold w-6 text-center">{quantity}</span>
                       <button
+                        type="button"
                         onClick={() => setQuantity(quantity + 1)}
                         className="w-10 h-10 rounded-full bg-white border border-black/10 flex items-center justify-center hover:bg-[#FDDA23] transition-colors"
                       >
@@ -150,6 +153,7 @@ export function TicketModal({ isOpen, onClose, event, initialQuantity }: TicketM
                       <span className="text-lg font-bold text-black">Gift to someone?</span>
                     </div>
                     <button
+                      type="button"
                       onClick={() => {
                         setIsGiftMode(!isGiftMode);
                         if (isGiftMode) setRecipientWallet("");
@@ -197,6 +201,7 @@ export function TicketModal({ isOpen, onClose, event, initialQuantity }: TicketM
                 </div>
 
                 <button
+                  type="button"
                   onClick={handleConfirmPurchase}
                   disabled={isPurchasing}
                   className="w-full bg-[#FDDA23] text-black font-bold text-xl h-16 rounded-full border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed group"
@@ -244,6 +249,7 @@ export function TicketModal({ isOpen, onClose, event, initialQuantity }: TicketM
                 </div>
 
                 <button
+                  type="button"
                   onClick={onClose}
                   className="w-full bg-black text-white font-bold text-lg h-14 rounded-full hover:opacity-90 transition-opacity"
                 >

@@ -40,7 +40,7 @@ const fallbackCardsData: DiscoverOrganizer[] = [
 
 const Button: React.FC = () => {
   return (
-    <button className="bg-yellow-300 pt-2 pl-3 pr-3 pb-2 flex gap-3 border border-yellow-300 rounded-lg items-center absolute top-40 right-5 hover:cursor-pointer">
+    <button type="button" className="bg-yellow-300 pt-2 pl-3 pr-3 pb-2 flex gap-3 border border-yellow-300 rounded-lg items-center absolute top-40 right-5 hover:cursor-pointer">
       <Image src={group} alt="User Group Icon" className="w-8 h-8" />
       <span className="text-black font-semibold">Subscribe</span>
     </button>
