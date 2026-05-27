@@ -32,6 +32,21 @@
   --color-success-light: #DAFFB5;
 }
 
+/* ── Focus-visible styles (WCAG AA) ── */
+*:focus {
+  outline: none;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
 /* NProgress Custom Styles */
 #nprogress .bar {
   background: #FDDA23 !important;
