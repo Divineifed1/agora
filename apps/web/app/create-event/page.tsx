@@ -6,6 +6,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
+import { Button } from "@/components/ui/button";
 import { CheckCircle2, Home, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 
@@ -126,10 +127,10 @@ export default function CreateEventPage() {
 
             <div className="flex flex-col w-full gap-4 mt-4">
               <Link href={`/events/${createdEventId?.replace("evt_", "")}`} className="w-full">
-                <button className="w-full bg-[#FDDA23] text-black font-bold text-xl h-16 rounded-full border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center justify-center gap-3">
-                  <span>View Event</span>
+                <Button variant="primary" className="w-full h-16 rounded-full text-xl">
+                  View Event
                   <ExternalLink size={24} />
-                </button>
+                </Button>
               </Link>
               <Link href="/home" className="w-full text-black/60 font-bold text-lg flex items-center justify-center gap-2 hover:text-black transition-colors">
                 <Home size={20} />
@@ -431,53 +432,43 @@ export default function CreateEventPage() {
               {errors.price && <span className="text-red-500 text-sm font-bold absolute bottom-2 left-6">{errors.price}</span>}
             </div>
 
-            <div className="flex justify-end gap-14 mt-6 mr-4">
-              <div className="relative w-[212px] h-[58px]">
-                <div className="absolute w-[212px] h-[50px] left-0 top-[6px] bg-[#000000] rounded-[32px]" />
-                <button
-                  type="button"
-                  onClick={() => setFormData({
-                    title: "",
-                    startDate: "",
-                    startTime: "",
-                    endDate: "",
-                    endTime: "",
-                    location: "",
-                    description: "",
-                    capacity: "",
-                    price: "",
-                    visibility: "Public",
-                  })}
-                  className="absolute w-[212px] h-[50px] left-[3px] top-0 bg-[#FFFFFF] border-2 border-[#000000] rounded-[32px] flex items-center justify-center hover:bg-gray-50 transition-transform active:translate-y-1 active:translate-x-px"
-                >
-                  <span className="font-semibold text-[15px] text-[#000000] text-center w-[131px] leading-[30px]">
-                    Clear Event
-                  </span>
-                </button>
-              </div>
+            <div className="flex justify-end gap-4 mt-6 mr-4">
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-[212px] h-[50px] rounded-[32px]"
+                onClick={() => setFormData({
+                  title: "",
+                  startDate: "",
+                  startTime: "",
+                  endDate: "",
+                  endTime: "",
+                  location: "",
+                  description: "",
+                  capacity: "",
+                  price: "",
+                  visibility: "Public",
+                })}
+              >
+                Clear Event
+              </Button>
 
-              <div className="relative w-[215px] h-[58px]">
-                <div className="absolute w-[212px] h-[50px] left-0 top-[6px] bg-[#000000] rounded-[32px]" />
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="absolute w-[212px] h-[50px] left-[3px] top-0 bg-[#FDDA23] border-2 border-[#000000] rounded-[32px] flex items-center justify-center gap-[10px] hover:bg-[#f0ce1e] transition-transform active:translate-y-1 active:translate-x-px disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                  <span className="font-semibold text-[15px] text-[#000000] text-center leading-[30px]">
-                    {isSubmitting ? "Creating..." : "Create Event"}
-                  </span>
-                  {!isSubmitting && (
-                    <div className="w-[24px] h-[24px] flex items-center justify-center">
-                      <Image
-                        src="/icons/arrow-up-right-01.svg"
-                        width={24}
-                        height={24}
-                        alt="Create"
-                      />
-                    </div>
-                  )}
-                </button>
-              </div>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={isSubmitting}
+                className="w-[212px] h-[50px] rounded-[32px] disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? "Creating..." : "Create Event"}
+                {!isSubmitting && (
+                  <Image
+                    src="/icons/arrow-up-right-01.svg"
+                    width={24}
+                    height={24}
+                    alt="Create"
+                  />
+                )}
+              </Button>
             </div>
           </div>
         </div>
