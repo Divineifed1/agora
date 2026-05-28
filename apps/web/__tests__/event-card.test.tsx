@@ -15,7 +15,7 @@ vi.mock("next/image", () => ({
 
 // Mock next/navigation
 vi.mock("next/navigation", () => ({
-  useRouter: vi.fn(),
+  useRouter: vi.fn(() => ({ push: vi.fn() })),
 }));
 
 const mockEvent = {
@@ -58,7 +58,7 @@ describe("EventCard", () => {
 
   it("handles click and navigates to event page", () => {
     const mockPush = vi.fn();
-    vi.mocked(useRouter).mockReturnValue({ push: mockPush } as any);
+    vi.mocked(useRouter).mockReturnValue({ push: mockPush });
     
     render(<EventCard {...mockEvent} />);
     

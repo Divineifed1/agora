@@ -5,7 +5,7 @@
  * a recipient wallet address at the time of purchase.
  */
 
-import { describe, it, expect, afterEach, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // Mock types
 type TicketRequestBody = {

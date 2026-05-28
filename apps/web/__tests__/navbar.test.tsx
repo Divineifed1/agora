@@ -4,7 +4,6 @@ import { cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { Navbar } from "@/components/layout/navbar";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 
 // Mock next/image
@@ -36,7 +35,7 @@ describe("Navbar", () => {
 
   it("renders correctly with logged-in user", () => {
     // Mock isLoggedIn to be true
-    vi.mocked(useState).mockReturnValue([true, vi.fn()] as any);
+    vi.mocked(useState).mockReturnValue([true, vi.fn()]);
     
     render(<Navbar />);
     
@@ -47,7 +46,7 @@ describe("Navbar", () => {
 
   it("renders correctly with guest user", () => {
     // Mock isLoggedIn to be false
-    vi.mocked(useState).mockReturnValue([false, vi.fn()] as any);
+    vi.mocked(useState).mockReturnValue([false, vi.fn()]);
     
     render(<Navbar />);
     
@@ -58,7 +57,7 @@ describe("Navbar", () => {
 
   it("toggles mobile menu when button is clicked", () => {
     // Mock isLoggedIn to be true
-    vi.mocked(useState).mockReturnValue([true, vi.fn()] as any);
+    vi.mocked(useState).mockReturnValue([true, vi.fn()]);
     
     render(<Navbar />);
     
