@@ -2,12 +2,13 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { expect, afterEach, describe, it, vi } from "vitest";
 import { cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 
 // Mock next/image
 vi.mock("next/image", () => ({
   default: ({ src, alt, width, height }: { src: string; alt: string; width: number; height: number }) => (
-    <img src={src} alt={alt} width={width} height={height} />
+    <Image src={src} alt={alt} width={width} height={height} />
   ),
 }));
 
