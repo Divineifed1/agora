@@ -6,6 +6,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { X, Minus, Plus, Ticket, ArrowRight, CheckCircle2, Gift } from "lucide-react";
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
 
 interface TicketModalProps {
   isOpen: boolean;
@@ -201,11 +202,11 @@ export function TicketModal({ isOpen, onClose, event, initialQuantity }: TicketM
                   </div>
                 </div>
 
-                <button
-                  type="button"
+                <Button
+                  variant="primary"
                   onClick={handleConfirmPurchase}
                   disabled={isPurchasing}
-                  className="w-full bg-accent text-black font-bold text-xl h-16 rounded-full border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed group"
+                  className="w-full h-16 rounded-full text-xl disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {isPurchasing ? (
                     <div className="w-6 h-6 border-2 border-black/30 border-t-black rounded-full animate-spin" />
@@ -215,7 +216,7 @@ export function TicketModal({ isOpen, onClose, event, initialQuantity }: TicketM
                       <ArrowRight size={24} className="group-hover:translate-x-1 transition-transform" />
                     </>
                   )}
-                </button>
+                </Button>
               </div>
             ) : (
               <div className="p-8 sm:p-10 flex flex-col items-center text-center gap-8">
@@ -249,13 +250,13 @@ export function TicketModal({ isOpen, onClose, event, initialQuantity }: TicketM
                   </div>
                 </div>
 
-                <button
-                  type="button"
+                <Button
+                  variant="dark"
                   onClick={onClose}
-                  className="w-full bg-black text-white font-bold text-lg h-14 rounded-full hover:opacity-90 transition-opacity"
+                  className="w-full h-14 rounded-full text-lg"
                 >
                   Done
-                </button>
+                </Button>
               </div>
             )}
 

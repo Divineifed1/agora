@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 // ─── Category options ────────────────────────────────────────────────────────
 const CATEGORIES = [
@@ -240,21 +241,7 @@ export function FilterSidebar({
                     hover:bg-black/80 active:scale-95 transition-all
                   "
                 >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 14 14"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    aria-hidden="true"
-                  >
-                    <path
-                      d="M1 1L13 13M13 1L1 13"
-                      stroke="white"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                    />
-                  </svg>
+                  <Image src="/icons/x.svg" width={14} height={14} alt="Close" className="text-white" />
                 </button>
               </div>
             </div>
@@ -383,21 +370,13 @@ export function FilterSidebar({
 
             {/* ── Footer CTA ── */}
             <div className="px-6 py-5 border-t border-black/10 shrink-0">
-              <button
-                type="button"
-                onClick={handleApply}
-                className="
-                  w-full h-12 rounded-[13px] bg-black text-white font-semibold text-[15px]
-                  shadow-[-4px_4px_0px_0px_rgba(0,0,0,0.25)]
-                  border border-black
-                  hover:-translate-x-[2px] hover:translate-y-[2px]
-                  hover:shadow-[-2px_2px_0px_0px_rgba(0,0,0,0.25)]
-                  active:-translate-x-[4px] active:translate-y-[4px] active:shadow-none
-                  transition-all
-                "
-              >
-                Apply Filters
-              </button>
+            <Button
+              variant="dark"
+              onClick={handleApply}
+              className="w-full h-12 rounded-[13px] text-[15px]"
+            >
+              Apply Filters
+            </Button>
             </div>
           </motion.aside>
         </>

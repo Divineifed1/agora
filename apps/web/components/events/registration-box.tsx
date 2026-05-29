@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { TicketModal } from "./TicketModal";
+import { Button } from "@/components/ui/button";
 
 interface RegistrationBoxProps {
   event: {
@@ -76,10 +77,10 @@ export function RegistrationBox({ event, host }: RegistrationBoxProps) {
         </p>
 
         <div className="flex items-center justify-between z-10 gap-4 flex-wrap">
-          <button
-            type="button"
+          <Button
+            variant="primary"
             onClick={handleRegisterClick}
-            className="bg-accent text-black font-bold text-[18px] sm:text-[22px] h-14 sm:h-16 px-8 sm:px-10 rounded-full border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none flex items-center justify-center gap-4 group transition-all"
+            className="h-14 sm:h-16 px-8 sm:px-10 rounded-full text-[18px] sm:text-[22px]"
           >
             {!isFree && (
               <Image
@@ -89,11 +90,7 @@ export function RegistrationBox({ event, host }: RegistrationBoxProps) {
                 alt="dollar"
               />
             )}
-
-            {isFree
-              ? "Register"
-              : `$${(priceValue * quantity).toFixed(2)}`}
-
+            {isFree ? "Register" : `$${(priceValue * quantity).toFixed(2)}`}
             <Image
               src="/icons/arrow-up-right-01.svg"
               width={24}
@@ -101,7 +98,7 @@ export function RegistrationBox({ event, host }: RegistrationBoxProps) {
               alt="arrow-up-right"
               className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform"
             />
-          </button>
+          </Button>
           <div className="flex items-center gap-3">
             <div className="relative w-11 h-11 sm:w-14 sm:h-14 rounded-full border-2 border-black overflow-hidden bg-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
               <Image

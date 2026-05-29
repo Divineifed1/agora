@@ -382,19 +382,16 @@ export default function CreateEventForm() {
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row justify-end items-center gap-4 mt-6 mb-8">
         <Button
+          variant="secondary"
           onClick={handleClear}
-          backgroundColor="bg-white"
-          textColor="text-black"
-          shadowColor="transparent"
-          className="w-full sm:w-auto hover:bg-gray-50 border border-transparent"
+          className="w-full sm:w-auto"
         >
           Clear Event
         </Button>
         <Button
+          variant="primary"
           disabled={isSubmitDisabled}
           onClick={handleSubmit}
-          backgroundColor="bg-accent"
-          textColor="text-black"
           className={`w-full sm:w-auto ${
             isSubmitDisabled
               ? "opacity-50 cursor-not-allowed hover:translate-x-0 hover:translate-y-0 active:translate-x-0 active:translate-y-0"

@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
+import { Button } from "@/components/ui/button";
 import CalendarIcon from "@/public/icons/calendar.svg";
 import HostingIcon from "@/public/icons/ticket-star.svg";
 import PastIcon from "@/public/icons/camera-smile-01.svg";
@@ -410,7 +411,7 @@ function TimelineEventCard({ event }: { event: TimelineEvent }) {
                   <div className="flex items-center gap-1.5 text-black/70">
                     <Image
                       src={locationImageSrc}
-                      alt="location"
+                      alt={event.location.toLowerCase().includes("discord") ? "Discord" : "Location"}
                       width={16}
                       height={16}
                       className="object-contain"
@@ -578,9 +579,9 @@ function MyEventsContent({ activeTab }: { activeTab: MyEventsTab }) {
         <div className="flex flex-col items-center gap-4">
           <p className="text-xl font-medium leading-5.5 text-center">Nothing Here, Yet</p>
           <Link href="/create-event">
-            <button type="button" className="bg-black text-white px-6 py-2 rounded-full font-medium shadow-[-4px_4px_0_rgba(0,0,0,0.2)] hover:shadow-none hover:translate-x-[-2px] hover:translate-y-[2px] transition-all">
+            <Button variant="dark" className="rounded-full">
               Create Your First Event
-            </button>
+            </Button>
           </Link>
         </div>
       </div>

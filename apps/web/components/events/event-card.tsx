@@ -47,7 +47,7 @@ export function EventCard({
               src={imageUrl}
               width={227}
               height={112}
-              alt="event image"
+              alt={title}
               className="object-cover w-full h-auto rounded-lg"
             />
             
@@ -96,7 +96,7 @@ export function EventCard({
               <div className="flex items-center gap-1.25 mt-1">
                 <Image
                   src={locationImageSrc}
-                  alt="location"
+                  alt={location.toLowerCase().includes("discord") ? "Discord" : "Location"}
                   width={16}
                   height={16}
                   className="object-contain flex-shrink-0"
