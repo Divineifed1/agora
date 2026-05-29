@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 //! # Event Handlers
 //!
 //! This module provides HTTP handlers for event-related operations including
@@ -723,6 +722,39 @@ mod tests {
         assert!(filters.organizer_id.is_some());
         assert_eq!(filters.location.unwrap(), "New York");
     }
+
+    #[test]
+    fn test_sold_out_status_when_minted_equals_total() {
+        let status = SoldOutStatus {
+            is_sold_out: 500 >= 500,
+            minted: 500,
+            total: 500,
+        };
+        assert!(status.is_sold_out);
+        assert_eq!(status.minted, 500);
+        assert_eq!(status.total, 500);
+    }
+
+    #[test]
+    fn test_sold_out_status_when_not_sold_out() {
+        let status = SoldOutStatus {
+            is_sold_out: 100 >= 500,
+            minted: 100,
+            total: 500,
+        };
+        assert!(!status.is_sold_out);
+    }
+
+    #[test]
+    fn test_sold_out_status_when_minted_exceeds_total() {
+        // Edge case: minted > total (e.g. after a refund reversal)
+        let status = SoldOutStatus {
+            is_sold_out: 501 >= 500,
+            minted: 501,
+            total: 500,
+        };
+        assert!(status.is_sold_out);
+    }
 }
 
 #[derive(Serialize)]
@@ -730,6 +762,75 @@ pub struct CheckInStats {
     pub checked_in: i64,
     pub total_sold: i64,
     pub remaining: i64,
+}
+
+/// Cache TTL for sold-out status (60 seconds)
+const SOLD_OUT_CACHE_TTL: Duration = Duration::from_secs(60);
+
+/// Response body for the is-sold-out endpoint
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SoldOutStatus {
+    pub is_sold_out: bool,
+    pub minted: i32,
+    pub total: i32,
+}
+
+/// GET /api/v1/events/:id/is-sold-out
+///
+/// Returns whether an event is sold out by comparing `minted_tickets` to
+/// `total_tickets`. Result is cached in Redis for 60 seconds.
+pub async fn get_sold_out_status(
+    State(mut state): State<EventState>,
+    Path(event_id): Path<Uuid>,
+) -> Response {
+    let cache_key = format!("event:sold_out:{}", event_id);
+
+    match state.redis.get::<SoldOutStatus>(&cache_key).await {
+        Ok(Some(status)) => {
+            return success(status, "Sold-out status retrieved (cached)").into_response()
+        }
+        Ok(None) => {}
+        Err(e) => tracing::warn!("Redis error for sold-out cache: {:?}", e),
+    }
+
+    let row = match sqlx::query_as::<_, (i32, i32)>(
+        "SELECT minted_tickets, total_tickets FROM events WHERE id = $1",
+    )
+    .bind(event_id)
+    .fetch_optional(&state.pool)
+    .await
+    {
+        Ok(Some(row)) => row,
+        Ok(None) => {
+            return AppError::NotFound(format!("Event with id '{}' not found", event_id))
+                .into_response();
+        }
+        Err(e) => {
+            tracing::error!("Failed to fetch event sold-out status: {:?}", e);
+            return AppError::DatabaseError(e).into_response();
+        }
+    };
+
+    let (minted, total) = row;
+    let status = SoldOutStatus {
+        is_sold_out: minted >= total,
+        minted,
+        total,
+    };
+
+    if let Err(e) = state
+        .redis
+        .set(&cache_key, &status, SOLD_OUT_CACHE_TTL)
+        .await
+    {
+        tracing::warn!(
+            "Failed to cache sold-out status for event {}: {:?}",
+            event_id,
+            e
+        );
+    }
+
+    success(status, "Sold-out status retrieved").into_response()
 }
 
 /// GET /api/v1/events/:id/check-in-stats
@@ -755,7 +856,11 @@ pub async fn get_checkin_stats(
             let checked_in = r.checked_in.unwrap_or(0);
             let total_sold = r.total_sold.unwrap_or(0);
             success(
-                CheckInStats { checked_in, total_sold, remaining: total_sold - checked_in },
+                CheckInStats {
+                    checked_in,
+                    total_sold,
+                    remaining: total_sold - checked_in,
+                },
                 "Check-in stats retrieved",
             )
             .into_response()
