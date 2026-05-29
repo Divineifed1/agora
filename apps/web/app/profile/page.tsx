@@ -1,21 +1,35 @@
 "use client";
 
-import { Suspense } from "react";
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useState, useEffect } from "react";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { ProfileSidebar } from "@/components/profile/profile-sidebar";
 import { EventCard } from "@/components/events/event-card";
+import Image from "next/image";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
-type EventItem = {
+// Types for organizer profile
+interface OrganizerProfile {
+  id?: string;
+  address: string;
+  displayName: string;
+  bio?: string;
+  avatarUrl?: string;
+  socials?: Record<string, string>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Types for events
+interface EventItem {
   id: number;
   title: string;
   date: string;
   location: string;
   price: string;
   imageUrl: string;
-};
+}
 
 const HOSTED_EVENTS: EventItem[] = [
   {
@@ -65,8 +79,6 @@ function EmptyState({ icon, heading, subtext }: { icon: React.ReactNode; heading
   );
 }
 
-import Image from "next/image";
-
 const CalendarIcon = () => (
   <Image src="/icons/calendar.svg" width={32} height={32} alt="Calendar" className="text-amber-400" />
 );
@@ -75,12 +87,85 @@ const TicketIcon = () => (
   <Image src="/icons/ticket.svg" width={32} height={32} alt="Ticket" className="text-amber-400" />
 );
 
+// New component to display organizer profile information
+function OrganizerProfileSection({ profile }: { profile: OrganizerProfile | null }) {
+  if (!profile) {
+    return (
+      <div className="bg-white rounded-2xl border border-border-warm shadow-sm p-6">
+        <h2 className="text-lg font-semibold text-ink-soft mb-4">Organizer Profile</h2>
+        <p className="text-gray-500">No profile information available</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-border-warm shadow-sm p-6">
+      <h2 className="text-lg font-semibold text-ink-soft mb-4">Organizer Profile</h2>
+      <div className="flex items-start gap-4">
+        {profile.avatarUrl ? (
+          <Image
+            src={profile.avatarUrl}
+            alt={profile.displayName}
+            width={80}
+            height={80}
+            className="rounded-full object-cover"
+          />
+        ) : (
+          <div className="w-20 h-20 rounded-full bg-violet-100 flex items-center justify-center text-2xl font-bold text-violet-600">
+            {profile.displayName.charAt(0).toUpperCase()}
+          </div>
+        )}
+        <div className="flex-1">
+          <h3 className="text-xl font-bold text-ink-deep">{profile.displayName}</h3>
+          {profile.bio && <p className="text-gray-600 mt-2">{profile.bio}</p>}
+          <div className="mt-4 flex flex-wrap gap-2">
+            {profile.socials && Object.entries(profile.socials).map(([platform, url]) => (
+              <a
+                key={platform}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm bg-violet-50 text-violet-700 px-3 py-1 rounded-full hover:bg-violet-100 transition-colors"
+              >
+                {platform}
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ProfileContent() {
   const searchParams = useSearchParams();
   const isEmpty = searchParams.get("empty") === "1";
+  const [profile, setProfile] = useState<OrganizerProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const hostedEvents = isEmpty ? [] : HOSTED_EVENTS;
   const attendedEvents = isEmpty ? [] : ATTENDED_EVENTS;
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch("/api/profile");
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        setProfile(data.profile);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load profile");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+  }, []);
 
   return (
     <div className="flex-1 w-full max-w-6xl mx-auto px-4 py-10">
@@ -90,6 +175,9 @@ function ProfileContent() {
         </div>
 
         <div className="flex-1 flex flex-col gap-6">
+          {/* Organizer Profile Section */}
+          <OrganizerProfileSection profile={profile} />
+
           {/* Hosting section */}
           <section className="bg-white rounded-2xl border border-border-warm shadow-sm overflow-hidden">
             <div className="px-6 pt-6 pb-4 border-b border-border-warm">
