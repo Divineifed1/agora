@@ -1,31 +1,17 @@
-"use client";
-
 import Image from "next/image";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { dataEvents } from "@/components/events/mockups";
 import { RegistrationBox } from "@/components/events/registration-box";
 import { notFound } from "next/navigation";
-import React, { use } from "react";
-import dynamic from "next/dynamic";
+import MapClient from "@/components/events/map-client";
 
-const Map = dynamic(() => import("@/components/events/event-location-map"), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-full bg-black/5 animate-pulse flex items-center justify-center">
-      <span className="text-black/50 font-medium font-heading">
-        Loading map...
-      </span>
-    </div>
-  ),
-});
-
-export default function EventDetailPage({
+export default async function EventDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const { id } = use(params);
+  const { id } = await params;
   const eventId = parseInt(id);
   const event = dataEvents.find((e) => e.id === eventId);
 
@@ -33,7 +19,6 @@ export default function EventDetailPage({
     notFound();
   }
 
-  const isFree = event.price.toLowerCase() === "free";
 
   // Mock host data matching Figma
   const host = {
@@ -44,7 +29,7 @@ export default function EventDetailPage({
   };
 
   return (
-    <main className="flex flex-col min-h-screen bg-[#FFFBE9]">
+    <main className="flex flex-col min-h-screen bg-base">
       <Navbar />
 
       <div className="flex-1 w-full max-w-[1221px] mx-auto px-6 py-6 sm:py-12">
@@ -52,7 +37,7 @@ export default function EventDetailPage({
           {/* LEFT COLUMN (Desktop) / TOP ITEMS (Mobile) */}
           <div className="lg:w-[55%] flex flex-col gap-8 lg:gap-10">
             {/* Cover Image Container - Dark Navy Background */}
-            <div className="relative aspect-16/10 sm:aspect-16/11 w-full rounded-[32px] sm:rounded-[40px] overflow-hidden bg-[#0B151F] shadow-sm flex items-center justify-center p-6 sm:p-12">
+            <div className="relative aspect-16/10 sm:aspect-16/11 w-full rounded-[32px] sm:rounded-[40px] overflow-hidden bg-dark shadow-sm flex items-center justify-center p-6 sm:p-12">
               <div className="relative w-full h-full">
                 <Image
                   src={event.imageUrl}
@@ -103,7 +88,7 @@ export default function EventDetailPage({
                 {event.location}
               </p>
               <div className="relative aspect-16/10 w-full rounded-[24px] overflow-hidden border border-black/10">
-                <Map location={event.location} />
+                <MapClient location={event.location} />
               </div>
             </div>
           </div>
@@ -136,7 +121,7 @@ export default function EventDetailPage({
                     src="/icons/notification.svg"
                     width={22}
                     height={22}
-                    alt="calendar"
+                    alt="Date"
                   />
                 </div>
                 <span className="text-[18px] sm:text-[19px] font-medium text-black">
@@ -146,7 +131,7 @@ export default function EventDetailPage({
             </div>
 
             {/* Registration Box */}
-            <RegistrationBox isFree={isFree} price={event.price} host={host} />
+            <RegistrationBox event={event} host={host} />
 
             {/* About Section */}
             <div className="flex flex-col gap-6 pt-4">
@@ -220,7 +205,7 @@ export default function EventDetailPage({
                 {event.location}
               </p>
               <div className="relative aspect-16/10 w-full rounded-[24px] overflow-hidden border border-black/10">
-                <Map location={event.location} />
+                <MapClient location={event.location} />
               </div>
             </div>
           </div>

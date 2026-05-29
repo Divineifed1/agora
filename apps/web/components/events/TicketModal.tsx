@@ -113,6 +113,7 @@ export function TicketModal({ isOpen, onClose, event, initialQuantity }: TicketM
         buyerWallet: "G...MOCK_WALLET_ADDRESS", // Placeholder
       };
 
+      // Only include recipientWallet if gift mode is enabled and address is provided
       if (isGiftMode && recipientWallet.trim()) {
         requestBody.recipientWallet = recipientWallet.trim();
       }

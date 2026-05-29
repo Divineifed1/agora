@@ -6,6 +6,7 @@ import right from "../../public/icons/arrow-right.svg";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { fetchOrganizers, type DiscoverOrganizer } from "@/utils/api";
+import { Button } from "@/components/ui/button";
 
 const fallbackCardsData: DiscoverOrganizer[] = [
   {
@@ -38,14 +39,17 @@ const fallbackCardsData: DiscoverOrganizer[] = [
   },
 ];
 
-const Button: React.FC = () => {
+function SubscribeButton() {
   return (
-    <button className="bg-yellow-300 pt-2 pl-3 pr-3 pb-2 flex gap-3 border border-yellow-300 rounded-lg items-center absolute top-40 right-5 hover:cursor-pointer">
+    <Button
+      variant="primary"
+      className="absolute top-40 right-5 rounded-lg px-3 py-2"
+    >
       <Image src={group} alt="User Group Icon" className="w-8 h-8" />
-      <span className="text-black font-semibold">Subscribe</span>
-    </button>
+      Subscribe
+    </Button>
   );
-};
+}
 
 type OrganizerComponentProps = {
   onError: (message: string) => void;
@@ -57,21 +61,22 @@ export function OrganizerComponent({ onError }: OrganizerComponentProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    let active = true;
+    // AbortController cancels the in-flight fetch when the component unmounts,
+    // preventing state updates on an unmounted component and avoiding memory leaks.
+    const controller = new AbortController();
 
     const loadOrganizers = async () => {
       try {
-        const data = await fetchOrganizers();
-        if (active) {
-          setCardsData(data);
-        }
-      } catch {
-        if (active) {
-          setCardsData([]);
-          onError("Could not load organizers");
-        }
+        const data = await fetchOrganizers(controller.signal);
+        setCardsData(data);
+      } catch (err) {
+        // Ignore abort errors — they are intentional and not user-facing.
+        if (err instanceof Error && err.name === "AbortError") return;
+        setCardsData([]);
+        onError("Could not load organizers");
       } finally {
-        if (active) {
+        // Only update loading state if the fetch was not aborted.
+        if (!controller.signal.aborted) {
           setIsLoading(false);
         }
       }
@@ -79,7 +84,7 @@ export function OrganizerComponent({ onError }: OrganizerComponentProps) {
 
     loadOrganizers();
     return () => {
-      active = false;
+      controller.abort();
     };
   }, [onError]);
 
@@ -94,7 +99,7 @@ export function OrganizerComponent({ onError }: OrganizerComponentProps) {
   };
 
   return (
-    <div className="p-10 pl-45 hidden lg:block bg-[#FFFBE9]">
+    <div className="p-10 pl-45 hidden lg:block bg-base">
       <div className="flex justify-start items-center gap-4 p-5 pb-10">
         <h1 className="font-semibold md:text-4xl pl-3">Explore organizers</h1>
         <Image
@@ -138,7 +143,7 @@ export function OrganizerComponent({ onError }: OrganizerComponentProps) {
               <p className="text-xs absolute left-25 top-20 w-65">
                 {card.description}
               </p>
-              <Button />
+              <SubscribeButton />
             </div>
           </div>
           ))}
@@ -150,13 +155,13 @@ export function OrganizerComponent({ onError }: OrganizerComponentProps) {
         <Image
           src={left}
           alt="Left Arrow"
-          className="w-12 h-12 p-3 hover:cursor-pointer bg-[#FFEFD3] rounded-full"
+          className="w-12 h-12 p-3 hover:cursor-pointer bg-surface rounded-full"
           onClick={scrollLeft}
         />
         <Image
           src={right}
           alt="Right Arrow"
-          className="w-12 h-12 p-3 hover:cursor-pointer bg-[#FFEFD3] rounded-full"
+          className="w-12 h-12 p-3 hover:cursor-pointer bg-surface rounded-full"
           onClick={scrollRight}
         />
       </span>

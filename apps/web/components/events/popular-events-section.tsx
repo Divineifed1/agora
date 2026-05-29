@@ -45,10 +45,11 @@ const DEFAULT_FILTERS: FilterState = {
 };
 
 type PopularEventsSectionProps = {
+  activeCategory?: string;
   onError: (message: string) => void;
 };
 
-export function PopularEventsSection({ onError }: PopularEventsSectionProps) {
+export function PopularEventsSection({ activeCategory, onError }: PopularEventsSectionProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [search, setSearch] = useState("");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -57,21 +58,22 @@ export function PopularEventsSection({ onError }: PopularEventsSectionProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    let active = true;
+    // AbortController cancels the in-flight fetch when the component unmounts,
+    // preventing state updates on an unmounted component and avoiding memory leaks.
+    const controller = new AbortController();
 
     const loadEvents = async () => {
       try {
-        const data = await fetchPopularEvents();
-        if (active) {
-          setEvents(data);
-        }
-      } catch {
-        if (active) {
-          setEvents([]);
-          onError("Could not load popular events");
-        }
+        const data = await fetchPopularEvents(controller.signal);
+        setEvents(data);
+      } catch (err) {
+        // Ignore abort errors — they are intentional and not user-facing.
+        if (err instanceof Error && err.name === "AbortError") return;
+        setEvents([]);
+        onError("Could not load popular events");
       } finally {
-        if (active) {
+        // Only update loading state if the fetch was not aborted.
+        if (!controller.signal.aborted) {
           setIsLoading(false);
         }
       }
@@ -79,7 +81,7 @@ export function PopularEventsSection({ onError }: PopularEventsSectionProps) {
 
     loadEvents();
     return () => {
-      active = false;
+      controller.abort();
     };
   }, [onError]);
 
@@ -99,6 +101,8 @@ export function PopularEventsSection({ onError }: PopularEventsSectionProps) {
       result = result.filter((event) =>
         filters.categories.includes(event.category),
       );
+    } else if (activeCategory && activeCategory !== "All") {
+      result = result.filter((event) => event.category.toLowerCase() === activeCategory.toLowerCase());
     }
 
     // 3. Location
@@ -132,7 +136,7 @@ export function PopularEventsSection({ onError }: PopularEventsSectionProps) {
     }
 
     return result;
-  }, [search, filters, events]);
+  }, [search, filters, events, activeCategory]);
 
   const widthVariants = {
     focused: { width: "12rem" },
@@ -145,7 +149,7 @@ export function PopularEventsSection({ onError }: PopularEventsSectionProps) {
   };
 
   return (
-    <section className="px-4 bg-[#FFFBE9] py-12">
+    <section className="px-4 bg-base py-12">
       <div className="max-w-305.25 mx-auto">
         <motion.div
           className="flex justify-between gap-3 mb-5.75"
@@ -206,9 +210,7 @@ export function PopularEventsSection({ onError }: PopularEventsSectionProps) {
 
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}>
               <Button
-                backgroundColor="bg-black"
-                shadowColor="transparent"
-                textColor="text-white"
+                variant="dark"
                 className="border-none sm:rounded-4xl! max-sm:p-0 h-9.75 sm:w-34 w-9.75"
                 onClick={() => setIsFilterOpen(true)}
                 aria-haspopup="dialog"
@@ -290,8 +292,7 @@ export function PopularEventsSection({ onError }: PopularEventsSectionProps) {
           whileTap={{ scale: 0.97 }}
         >
           <Button
-            backgroundColor="bg-[#FDDA23]"
-            shadowColor="transparent"
+            variant="primary"
             className="border-none rounded-[13px]! h-11"
           >
             View all Events
