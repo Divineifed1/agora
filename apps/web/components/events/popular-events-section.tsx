@@ -57,21 +57,22 @@ export function PopularEventsSection({ onError }: PopularEventsSectionProps) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    let active = true;
+    // AbortController cancels the in-flight fetch when the component unmounts,
+    // preventing state updates on an unmounted component and avoiding memory leaks.
+    const controller = new AbortController();
 
     const loadEvents = async () => {
       try {
-        const data = await fetchPopularEvents();
-        if (active) {
-          setEvents(data);
-        }
-      } catch {
-        if (active) {
-          setEvents([]);
-          onError("Could not load popular events");
-        }
+        const data = await fetchPopularEvents(controller.signal);
+        setEvents(data);
+      } catch (err) {
+        // Ignore abort errors — they are intentional and not user-facing.
+        if (err instanceof Error && err.name === "AbortError") return;
+        setEvents([]);
+        onError("Could not load popular events");
       } finally {
-        if (active) {
+        // Only update loading state if the fetch was not aborted.
+        if (!controller.signal.aborted) {
           setIsLoading(false);
         }
       }
@@ -79,7 +80,7 @@ export function PopularEventsSection({ onError }: PopularEventsSectionProps) {
 
     loadEvents();
     return () => {
-      active = false;
+      controller.abort();
     };
   }, [onError]);
 
