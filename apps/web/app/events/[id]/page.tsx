@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
@@ -5,6 +6,23 @@ import { dataEvents } from "@/components/events/mockups";
 import { RegistrationBox } from "@/components/events/registration-box";
 import { notFound } from "next/navigation";
 import MapClient from "@/components/events/map-client";
+import { buildMetadata } from "@/components/layout/seo";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const event = dataEvents.find((e) => e.id === parseInt(id));
+  if (!event) return {};
+  return buildMetadata({
+    title: event.title,
+    description: `Join us for ${event.title} on ${event.date} in ${event.location}. ${event.price === "Free" ? "Free entry." : `Tickets from $${event.price}.`} Secure your spot on Agora.`,
+    image: event.imageUrl,
+    path: `/events/${id}`,
+  });
+}
 
 export default async function EventDetailPage({
   params,
