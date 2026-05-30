@@ -1,7 +1,6 @@
 "use client";
 
 import { motion, type Transition } from "framer-motion";
-import Image from "next/image";
 import { useEffect, useState } from "react";
 import { fetchCategories, type DiscoverCategory } from "@/utils/api";
 
