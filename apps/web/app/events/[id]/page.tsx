@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
@@ -5,6 +6,23 @@ import { dataEvents } from "@/components/events/mockups";
 import { RegistrationBox } from "@/components/events/registration-box";
 import { notFound } from "next/navigation";
 import MapClient from "@/components/events/map-client";
+import { buildMetadata } from "@/components/layout/seo";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const event = dataEvents.find((e) => e.id === parseInt(id));
+  if (!event) return {};
+  return buildMetadata({
+    title: event.title,
+    description: `Join us for ${event.title} on ${event.date} in ${event.location}. ${event.price === "Free" ? "Free entry." : `Tickets from $${event.price}.`} Secure your spot on Agora.`,
+    image: event.imageUrl,
+    path: `/events/${id}`,
+  });
+}
 
 export default async function EventDetailPage({
   params,
@@ -18,7 +36,6 @@ export default async function EventDetailPage({
   if (!event) {
     notFound();
   }
-
 
   // Mock host data matching Figma
   const host = {
@@ -36,7 +53,7 @@ export default async function EventDetailPage({
         <div className="flex flex-col lg:flex-row gap-8 lg:gap-16">
           {/* LEFT COLUMN (Desktop) / TOP ITEMS (Mobile) */}
           <div className="lg:w-[55%] flex flex-col gap-8 lg:gap-10">
-            {/* Cover Image Container - Dark Navy Background */}
+            {/* Cover Image Container - Dark Navy Background (Hero Asset: Priority Maintained) */}
             <div className="relative aspect-16/10 sm:aspect-16/11 w-full rounded-[32px] sm:rounded-[40px] overflow-hidden bg-dark shadow-sm flex items-center justify-center p-6 sm:p-12">
               <div className="relative w-full h-full">
                 <Image
@@ -49,7 +66,7 @@ export default async function EventDetailPage({
               </div>
             </div>
 
-            {/* Hosted By - Positioned after image on mobile */}
+            {/* Hosted By */}
             <div className="flex flex-col gap-4">
               <h2 className="text-xl font-bold text-black font-heading">
                 Hosted By
@@ -61,6 +78,7 @@ export default async function EventDetailPage({
                     fill
                     alt="Stellar"
                     className="object-contain p-1.5"
+                    loading="lazy"
                   />
                 </div>
                 <span className="text-[17px] font-medium text-black">
@@ -78,6 +96,7 @@ export default async function EventDetailPage({
                     width={20}
                     height={20}
                     alt="location"
+                    loading="lazy"
                   />
                 </div>
                 <h2 className="text-xl font-bold text-black font-heading">
@@ -109,6 +128,7 @@ export default async function EventDetailPage({
                     width={22}
                     height={22}
                     alt="location"
+                    loading="lazy"
                   />
                 </div>
                 <span className="text-[18px] sm:text-[19px] font-medium text-black">
@@ -122,6 +142,7 @@ export default async function EventDetailPage({
                     width={22}
                     height={22}
                     alt="Date"
+                    loading="lazy"
                   />
                 </div>
                 <span className="text-[18px] sm:text-[19px] font-medium text-black">
@@ -195,6 +216,7 @@ export default async function EventDetailPage({
                     width={20}
                     height={20}
                     alt="location"
+                    loading="lazy"
                   />
                 </div>
                 <h2 className="text-xl font-bold text-black font-heading">
@@ -221,6 +243,7 @@ export default async function EventDetailPage({
           width={600}
           height={600}
           alt="bg-watermark"
+          loading="lazy"
         />
       </div>
     </main>

@@ -141,8 +141,8 @@ function ProfileContent() {
   const searchParams = useSearchParams();
   const isEmpty = searchParams.get("empty") === "1";
   const [profile, setProfile] = useState<OrganizerProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [_loading, setLoading] = useState(true);
+  const [_error, setError] = useState<string | null>(null);
 
   const hostedEvents = isEmpty ? [] : HOSTED_EVENTS;
   const attendedEvents = isEmpty ? [] : ATTENDED_EVENTS;
