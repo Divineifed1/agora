@@ -15,12 +15,12 @@ use crate::types::{
 };
 use soroban_sdk::{contract, contractimpl, token, Address, BytesN, Env, String, Vec};
 
+mod auth;
 pub mod error;
 pub mod events;
 pub mod storage;
 mod topics;
 pub mod types;
-mod auth;
 
 use crate::types::{SeriesPass, SeriesRegistry};
 
@@ -169,7 +169,7 @@ impl EventRegistry {
 
     /// Adds a token address to the payment token whitelist. Only callable by the administrator.
     pub fn add_to_token_whitelist(env: Env, token: Address) -> Result<(), EventRegistryError> {
-        let admin = auth::require_admin(&env)?;
+        let _admin = auth::require_admin(&env)?;
         validate_address(&env, &token)?;
         storage::add_to_token_whitelist(&env, &token);
         Ok(())
@@ -177,7 +177,7 @@ impl EventRegistry {
 
     /// Removes a token address from the payment token whitelist. Only callable by the administrator.
     pub fn remove_from_token_whitelist(env: Env, token: Address) -> Result<(), EventRegistryError> {
-        let admin = auth::require_admin(&env)?;
+        let _admin = auth::require_admin(&env)?;
         storage::remove_from_token_whitelist(&env, &token);
         Ok(())
     }
@@ -484,7 +484,7 @@ impl EventRegistry {
 
     /// Updates the platform fee percentage. Only callable by the administrator.
     pub fn set_platform_fee(env: Env, new_fee_percent: u32) -> Result<(), EventRegistryError> {
-        let admin = auth::require_admin(&env)?;
+        let _admin = auth::require_admin(&env)?;
 
         if new_fee_percent > 10000 {
             return Err(EventRegistryError::InvalidFeePercent);
@@ -559,7 +559,7 @@ impl EventRegistry {
         env: Env,
         ticket_payment_address: Address,
     ) -> Result<(), EventRegistryError> {
-        let admin = auth::require_admin(&env)?;
+        let _admin = auth::require_admin(&env)?;
 
         validate_address(&env, &ticket_payment_address)?;
 
@@ -745,7 +745,7 @@ impl EventRegistry {
     /// Upgrades the contract to a new WASM hash. Only callable by the administrator.
     /// Performs post-upgrade state verification to ensure critical storage is intact.
     pub fn upgrade(env: Env, new_wasm_hash: BytesN<32>) -> Result<(), EventRegistryError> {
-        let admin = auth::require_admin(&env)?;
+        let _admin = auth::require_admin(&env)?;
 
         env.deployer().update_current_contract_wasm(new_wasm_hash);
 
@@ -1019,7 +1019,7 @@ impl EventRegistry {
         token: Address,
         min_amount: i128,
     ) -> Result<(), EventRegistryError> {
-        let admin = auth::require_admin(&env)?;
+        let _admin = auth::require_admin(&env)?;
 
         if min_amount <= 0 {
             return Err(EventRegistryError::InvalidStakeAmount);
@@ -1610,7 +1610,7 @@ impl EventRegistry {
                 let mut new_config = config.clone();
                 new_config.admins.push_back(new_admin.clone());
                 storage::set_multisig_config(&env, &new_config);
-                storage::set_admin(&env, &new_admin); // Update legacy admin storage
+                storage::set_admin(&env, new_admin); // Update legacy admin storage
             }
             types::ParameterChange::RemoveAdmin(admin_to_remove) => {
                 let mut new_config = config.clone();
@@ -1635,7 +1635,7 @@ impl EventRegistry {
                 storage::set_multisig_config(&env, &new_config);
             }
             types::ParameterChange::UpdatePlatformWallet(new_wallet) => {
-                storage::set_platform_wallet(&env, &new_wallet);
+                storage::set_platform_wallet(&env, new_wallet);
             }
             types::ParameterChange::SetPlatformFee(new_fee) => {
                 storage::set_platform_fee(&env, *new_fee);

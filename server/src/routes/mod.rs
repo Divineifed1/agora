@@ -38,16 +38,15 @@ use crate::handlers::{
     auth::{logout, request_nonce, verify_signature},
     categories::{get_category, list_categories},
     events::{
-        export_attendees_csv, get_checkin_stats, get_event, get_event_organizer,
-        get_event_share_link, get_event_social_proof, get_ratings_summary,
-        list_events, search_events, submit_event_rating, toggle_event_flag,
-        EventState,
+        export_attendees_csv, get_checkin_stats, get_event, get_event_counts, get_event_organizer,
+        get_event_share_link, get_event_social_proof, get_ratings_summary, list_events,
+        search_events, submit_event_rating, toggle_event_flag, EventState,
     },
     example_empty_success, example_not_found, example_validation_error,
     health::{health_check, health_check_blockchain, health_check_db, health_check_ready},
     leaderboard::get_leaderboard,
     monitoring::{monitoring_dashboard, MonitoringState},
-    profile::{get_my_profile, get_profile_by_address, upsert_profile, get_organizer_stats},
+    profile::{get_my_profile, get_organizer_stats, get_profile_by_address, upsert_profile},
     qr_payload::{generate_qr_payload, list_qr_payloads, mark_qr_used, verify_qr_payload},
     rates::{get_rates, RatesState},
     soroban_listener::{spawn_listener, ListenerConfig},
@@ -76,7 +75,7 @@ const GENERAL_WINDOW: Duration = Duration::from_secs(60);
 ///
 /// # Returns
 /// A configured Axum Router with all routes and middleware applied
-pub async fn create_routes(pool: PgPool, _config: Config, redis: RedisCache) -> Router {
+pub async fn create_routes(pool: PgPool, config: Config, redis: RedisCache) -> Router {
     let broadcaster = PurchaseBroadcaster::new();
 
     let event_state = EventState {

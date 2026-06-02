@@ -20,8 +20,8 @@ use crate::models::organizer_profile::{OrganizerProfile, UpsertProfileRequest};
 use crate::utils::error::AppError;
 use crate::utils::response::success;
 
-use serde::Serialize;
 use once_cell::sync::Lazy;
+use serde::Serialize;
 use std::collections::HashMap;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -184,25 +184,25 @@ pub async fn get_organizer_stats(
         let cache = STATS_CACHE.lock().unwrap();
         if let Some((expiry, stats)) = cache.get(&address) {
             if Instant::now() < *expiry {
-                return success(stats.clone(), "Organizer stats retrieved from cache").into_response();
+                return success(stats.clone(), "Organizer stats retrieved from cache")
+                    .into_response();
             }
         }
     }
 
     // total events
-    let total_events: i64 = match sqlx::query_scalar(
-        "SELECT COUNT(*) FROM events WHERE organizer_wallet = $1",
-    )
-    .bind(&address)
-    .fetch_one(&pool)
-    .await
-    {
-        Ok(v) => v,
-        Err(e) => {
-            tracing::error!("Failed to query total_events: {:?}", e);
-            return AppError::DatabaseError(e).into_response();
-        }
-    };
+    let total_events: i64 =
+        match sqlx::query_scalar("SELECT COUNT(*) FROM events WHERE organizer_wallet = $1")
+            .bind(&address)
+            .fetch_one(&pool)
+            .await
+        {
+            Ok(v) => v,
+            Err(e) => {
+                tracing::error!("Failed to query total_events: {:?}", e);
+                return AppError::DatabaseError(e).into_response();
+            }
+        };
 
     // total tickets sold
     let total_tickets_sold: i64 = match sqlx::query_scalar(
@@ -243,7 +243,10 @@ pub async fn get_organizer_stats(
     // store in cache
     {
         let mut cache = STATS_CACHE.lock().unwrap();
-        cache.insert(address.clone(), (Instant::now() + STATS_CACHE_TTL, stats.clone()));
+        cache.insert(
+            address.clone(),
+            (Instant::now() + STATS_CACHE_TTL, stats.clone()),
+        );
     }
 
     success(stats, "Organizer stats retrieved successfully").into_response()
@@ -329,9 +332,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_organizer_stats_cache_hit() {
-        use axum::extract::{State, Path};
+        use axum::extract::{Path, State};
         // create a lazy pool; it won't hit the DB because the cache will short-circuit
-        let pool = sqlx::PgPool::connect_lazy("postgres://localhost/fake");
+        let pool = sqlx::PgPool::connect_lazy("postgres://localhost/fake").unwrap();
         let addr = "TEST-ADDR".to_string();
         {
             let mut cache = STATS_CACHE.lock().unwrap();
@@ -350,7 +353,9 @@ mod tests {
 
         let resp = get_organizer_stats(State(pool), Path(addr.clone())).await;
         let http = resp.into_response();
-        let bytes = hyper::body::to_bytes(http.into_body()).await.unwrap();
+        let bytes = axum::body::to_bytes(http.into_body(), 1024 * 1024)
+            .await
+            .unwrap();
         let v: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
         assert!(v["success"].as_bool().unwrap());
         assert_eq!(v["data"]["total_events"].as_i64().unwrap(), 2);

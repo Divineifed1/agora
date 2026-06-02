@@ -24,19 +24,24 @@ const eventSchema = z.object({
   visibility: z.enum(["Public", "Private"]),
 });
 
-
 export default function CreateEventPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [organizer, setOrganizer] = useState<{ name: string; wallet: string } | null>(null);
+  const [organizer, setOrganizer] = useState<{
+    name: string;
+    wallet: string;
+  } | null>(null);
   const isMounted = useIsMounted();
 
   useEffect(() => {
     fetch("/api/profile")
-      .then((r) => r.ok ? r.json() : null)
+      .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.profile) {
-          setOrganizer({ name: data.profile.displayName, wallet: data.profile.address });
+          setOrganizer({
+            name: data.profile.displayName,
+            wallet: data.profile.address,
+          });
         }
       })
       .catch(() => null);
@@ -64,7 +69,9 @@ export default function CreateEventPage() {
     return startsAt.toISOString();
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     // Clear error when user starts typing
@@ -96,7 +103,7 @@ export default function CreateEventPage() {
     setErrors({});
     setIsSubmitting(true);
     try {
-      const values = parsed.data;
+      const values = result.data;
       const response = await fetch("/api/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -106,7 +113,9 @@ export default function CreateEventPage() {
           location: formData.location,
           category: "Tech",
           organizerName: organizer?.name ?? "Agora Organizer",
-          organizerWallet: organizer?.wallet ?? "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
+          organizerWallet:
+            organizer?.wallet ??
+            "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF",
           description: formData.description,
           ticketPrice: parseFloat(formData.price) || 0,
           totalTickets: parseInt(formData.capacity) || 100,
@@ -120,7 +129,9 @@ export default function CreateEventPage() {
       toast.success("Event created successfully!");
       router.push(`/events/${data.event.id}`);
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Something went wrong");
+      toast.error(
+        error instanceof Error ? error.message : "Something went wrong",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -130,14 +141,20 @@ export default function CreateEventPage() {
     <main className="flex flex-col min-h-screen bg-base">
       <Navbar />
 
-      <form onSubmit={handleSubmit} className="w-full max-w-[1221px] mx-auto px-4 lg:px-0 py-8 lg:py-12 flex-1 flex flex-col">
+      <form
+        onSubmit={handleSubmit}
+        className="w-full max-w-[1221px] mx-auto px-4 lg:px-0 py-8 lg:py-12 flex-1 flex flex-col"
+      >
         <h1 className="text-[58px] font-semibold italic text-ink-deep mb-8 lg:mb-10 tracking-tight leading-[66px]">
           Create your Event
         </h1>
 
         <div className="flex flex-col lg:flex-row gap-8 lg:gap-[60px] items-start">
           <div className="w-full lg:w-[450px] shrink-0">
-            <button type="button" className="relative w-full aspect-square rounded-[24px] overflow-hidden group border border-black/5 shadow-sm text-left block">
+            <button
+              type="button"
+              className="relative w-full aspect-square rounded-[24px] overflow-hidden group border border-black/5 shadow-sm text-left block"
+            >
               <div className="absolute inset-0 bg-linear-to-br from-[#0B7A75] via-[#314FB5] to-[#E35661]">
                 <div className="absolute inset-4 border-[1.5px] border-dashed border-white/30 rounded-[16px] pointer-events-none" />
 
@@ -170,7 +187,9 @@ export default function CreateEventPage() {
           </div>
 
           <div className="flex-1 w-full flex flex-col gap-4">
-            <div className={`bg-white/50 backdrop-blur-sm border-[1.5px] rounded-[16px] p-6 lg:p-7 flex flex-col justify-center relative shadow-sm min-h-[120px] transition-colors ${errors.title ? "border-red-500 bg-red-50/10" : "border-black/3"}`}>
+            <div
+              className={`bg-white/50 backdrop-blur-sm border-[1.5px] rounded-[16px] p-6 lg:p-7 flex flex-col justify-center relative shadow-sm min-h-[120px] transition-colors ${errors.title ? "border-red-500 bg-red-50/10" : "border-black/3"}`}
+            >
               <label className="text-[15px] font-semibold text-ink-alt absolute top-4 left-6 leading-[66px]">
                 Event Title
               </label>
@@ -182,11 +201,17 @@ export default function CreateEventPage() {
                 placeholder="Event Name"
                 className="text-[38px] font-semibold placeholder:text-muted-text/30 text-muted-text outline-none w-full bg-transparent mt-12 mb-2"
               />
-              {errors.title && <span className="text-red-500 text-sm font-bold absolute bottom-2 right-6">{errors.title}</span>}
+              {errors.title && (
+                <span className="text-red-500 text-sm font-bold absolute bottom-2 right-6">
+                  {errors.title}
+                </span>
+              )}
             </div>
 
             <div className="flex flex-col lg:flex-row gap-4 mt-2">
-              <div className={`flex-2 bg-white/50 backdrop-blur-sm border-[1.5px] rounded-[16px] p-6 flex flex-col justify-between relative min-h-[130px] shadow-sm transition-colors ${errors.startDate || errors.startTime ? "border-red-500 bg-red-50/10" : "border-black/3"}`}>
+              <div
+                className={`flex-2 bg-white/50 backdrop-blur-sm border-[1.5px] rounded-[16px] p-6 flex flex-col justify-between relative min-h-[130px] shadow-sm transition-colors ${errors.startDate || errors.startTime ? "border-red-500 bg-red-50/10" : "border-black/3"}`}
+              >
                 <div className="absolute left-[39px] top-[46px] bottom-[46px] w-px bg-black/50" />
 
                 <div className="flex items-center">
@@ -253,7 +278,9 @@ export default function CreateEventPage() {
                           const offsetMinutes = -new Date().getTimezoneOffset();
                           const sign = offsetMinutes >= 0 ? "+" : "-";
                           const absMinutes = Math.abs(offsetMinutes);
-                          const hours = String(Math.floor(absMinutes / 60)).padStart(2, "0");
+                          const hours = String(
+                            Math.floor(absMinutes / 60),
+                          ).padStart(2, "0");
                           const mins = String(absMinutes % 60).padStart(2, "0");
                           return `GMT${sign}${hours}:${mins}`;
                         })()}
@@ -284,7 +311,9 @@ export default function CreateEventPage() {
               </div>
             </div>
 
-            <div className={`bg-white/50 backdrop-blur-sm border-[1.5px] rounded-[16px] p-6 flex flex-col justify-center relative shadow-sm min-h-[120px] mt-2 transition-colors ${errors.location ? "border-red-500 bg-red-50/10" : "border-black/3"}`}>
+            <div
+              className={`bg-white/50 backdrop-blur-sm border-[1.5px] rounded-[16px] p-6 flex flex-col justify-center relative shadow-sm min-h-[120px] mt-2 transition-colors ${errors.location ? "border-red-500 bg-red-50/10" : "border-black/3"}`}
+            >
               <label className="text-[15px] font-semibold text-ink-alt absolute top-3 left-6 leading-[66px]">
                 Add Event Location
               </label>
@@ -298,7 +327,10 @@ export default function CreateEventPage() {
                   className="text-[19px] font-semibold placeholder:text-muted-text/30 text-muted-text outline-none bg-transparent flex-1"
                 />
                 <div className="flex gap-[10px] shrink-0">
-                  <button type="button" className="w-[49px] h-[49px] rounded-[120px] bg-subtle/50 flex items-center justify-center hover:bg-subtle/70 transition-colors">
+                  <button
+                    type="button"
+                    className="w-[49px] h-[49px] rounded-[120px] bg-subtle/50 flex items-center justify-center hover:bg-subtle/70 transition-colors"
+                  >
                     <Image
                       src="/icons/video.svg"
                       width={24}
@@ -306,7 +338,10 @@ export default function CreateEventPage() {
                       alt="Virtual"
                     />
                   </button>
-                  <button type="button" className="w-[49px] h-[49px] rounded-[120px] bg-subtle/50 flex items-center justify-center hover:bg-subtle/70 transition-colors">
+                  <button
+                    type="button"
+                    className="w-[49px] h-[49px] rounded-[120px] bg-subtle/50 flex items-center justify-center hover:bg-subtle/70 transition-colors"
+                  >
                     <Image
                       src="/icons/map-pin.svg"
                       width={24}
@@ -316,7 +351,11 @@ export default function CreateEventPage() {
                   </button>
                 </div>
               </div>
-              {errors.location && <span className="text-red-500 text-sm font-bold absolute bottom-2 left-6">{errors.location}</span>}
+              {errors.location && (
+                <span className="text-red-500 text-sm font-bold absolute bottom-2 left-6">
+                  {errors.location}
+                </span>
+              )}
             </div>
 
             <div className="bg-white/50 backdrop-blur-sm border-[1.5px] border-black/3 rounded-[16px] p-6 flex flex-col justify-center relative shadow-sm min-h-[120px] mt-2">
@@ -332,7 +371,10 @@ export default function CreateEventPage() {
                   className="text-[19px] font-semibold placeholder:text-muted-text/30 text-muted-text outline-none flex-1 bg-transparent pb-1 resize-none"
                   rows={1}
                 />
-                <button type="button" className="w-[49px] h-[49px] rounded-[120px] bg-base flex items-center justify-center hover:bg-accent-muted transition-colors shrink-0">
+                <button
+                  type="button"
+                  className="w-[49px] h-[49px] rounded-[120px] bg-base flex items-center justify-center hover:bg-accent-muted transition-colors shrink-0"
+                >
                   <Image
                     src="/icons/edit.svg"
                     width={24}
@@ -355,7 +397,9 @@ export default function CreateEventPage() {
 
                 <button
                   type="button"
-                  onClick={() => setFormData((prev) => ({ ...prev, visibility: "Public" }))}
+                  onClick={() =>
+                    setFormData((prev) => ({ ...prev, visibility: "Public" }))
+                  }
                   className={`flex-1 border-[1.5px] backdrop-blur-sm rounded-[16px] h-[80px] px-4 flex items-center justify-center gap-4 transition-colors ${formData.visibility === "Public" ? "bg-white border-black shadow-sm" : "bg-subtle/50 border-black/3 hover:bg-subtle/70"}`}
                 >
                   <span className="font-semibold text-black text-[19px] leading-[18px]">
@@ -373,7 +417,9 @@ export default function CreateEventPage() {
 
                 <button
                   type="button"
-                  onClick={() => setFormData((prev) => ({ ...prev, visibility: "Private" }))}
+                  onClick={() =>
+                    setFormData((prev) => ({ ...prev, visibility: "Private" }))
+                  }
                   className={`flex-1 border-[1.5px] backdrop-blur-sm rounded-[16px] h-[80px] px-4 flex items-center justify-center gap-4 transition-colors ${formData.visibility === "Private" ? "bg-white border-black shadow-sm" : "bg-subtle/50 border-black/3 hover:bg-subtle/70"}`}
                 >
                   <span className="font-semibold text-black text-[19px] leading-[18px]">
@@ -403,7 +449,10 @@ export default function CreateEventPage() {
                     placeholder="Unlimited"
                     className="text-[19px] font-semibold placeholder:text-muted-text/30 text-muted-text outline-none flex-1 bg-transparent"
                   />
-                  <button type="button" className="w-[49px] h-[49px] rounded-[120px] bg-base flex items-center justify-center hover:bg-accent-muted transition-colors shrink-0">
+                  <button
+                    type="button"
+                    className="w-[49px] h-[49px] rounded-[120px] bg-base flex items-center justify-center hover:bg-accent-muted transition-colors shrink-0"
+                  >
                     <Image
                       src="/icons/edit.svg"
                       width={24}
@@ -415,7 +464,9 @@ export default function CreateEventPage() {
               </div>
             </div>
 
-            <div className={`bg-white/50 backdrop-blur-sm border-[1.5px] rounded-[16px] p-6 flex flex-col justify-center relative shadow-sm min-h-[120px] mt-2 transition-colors ${errors.price ? "border-red-500 bg-red-50/10" : "border-black/3"}`}>
+            <div
+              className={`bg-white/50 backdrop-blur-sm border-[1.5px] rounded-[16px] p-6 flex flex-col justify-center relative shadow-sm min-h-[120px] mt-2 transition-colors ${errors.price ? "border-red-500 bg-red-50/10" : "border-black/3"}`}
+            >
               <label className="text-[15px] font-semibold text-ink-alt absolute top-3 left-6 leading-[66px]">
                 Ticket Price
               </label>
@@ -437,10 +488,14 @@ export default function CreateEventPage() {
                   />
                 </div>
               </div>
-              {errors.price && <span className="text-red-500 text-sm font-bold absolute bottom-2 left-6">{errors.price}</span>}
+              {errors.price && (
+                <span className="text-red-500 text-sm font-bold absolute bottom-2 left-6">
+                  {errors.price}
+                </span>
+              )}
             </div>
 
-<div className="flex justify-end gap-4 mt-6 mr-4">
+            <div className="flex justify-end gap-4 mt-6 mr-4">
               <Button
                 type="button"
                 variant="secondary"
@@ -480,7 +535,7 @@ export default function CreateEventPage() {
                 )}
               </Button>
             </div>
-            </div>
+          </div>
         </div>
       </form>
       <Footer />
