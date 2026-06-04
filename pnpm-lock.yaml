@@ -100,9 +100,6 @@ importers:
         specifier: 3.24.4
         version: 3.24.4
     devDependencies:
-      '@rollup/rollup-win32-x64-msvc':
-        specifier: ^4.60.4
-        version: 4.60.4
       '@tailwindcss/postcss':
         specifier: ^4
         version: 4.1.18
@@ -1031,11 +1028,6 @@ packages:
 
   '@rollup/rollup-win32-x64-msvc@4.60.2':
     resolution: {integrity: sha512-Nd/SgG27WoA9e+/TdK74KnHz852TLa94ovOYySo/yMPuTmpckK/jIF2jSwS3g7ELSKXK13/cVdmg1Z/DaCWKxA==}
-    cpu: [x64]
-    os: [win32]
-
-  '@rollup/rollup-win32-x64-msvc@4.60.4':
-    resolution: {integrity: sha512-QVTUovf40zgTqlFVrKA1uXMVvU2QWEFWfAH8Wdc48IxLvrJMQVMBRjuQyUpzZCDkakImib9eVazbWlC6ksWtJw==}
     cpu: [x64]
     os: [win32]
 
@@ -5113,8 +5105,6 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.60.2':
     optional: true
-
-  '@rollup/rollup-win32-x64-msvc@4.60.4': {}
 
   '@rtsao/scc@1.1.0': {}
 
