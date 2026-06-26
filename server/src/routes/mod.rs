@@ -37,21 +37,22 @@ use crate::config::{
 };
 use crate::handlers::{
     auth::{logout, request_nonce, verify_signature},
-    categories::{get_category, list_categories},
+    categories::{get_category, list_categories, CategoryState},
     events::{
         export_attendees_csv, get_attendee_count, get_checkin_stats, get_event, get_event_counts,
         get_event_organizer, get_event_share_link, get_event_social_proof, get_ratings_summary,
-        list_event_tickets, list_events, list_events_by_category, list_past_events,
-        list_similar_events, list_ticket_tiers, search_events, submit_event_rating,
-        toggle_event_flag, EventState,
+        list_event_tickets, list_events, list_events_by_category, list_featured_events,
+        list_past_events,
+        list_similar_events, list_ticket_tiers, list_upcoming_events, search_events,
+        submit_event_rating, toggle_event_flag, EventState,
     },
     example_empty_success, example_not_found, example_validation_error,
     health::{health_check, health_check_blockchain, health_check_db, health_check_ready},
     leaderboard::{get_leaderboard, LeaderboardState},
     monitoring::{monitoring_dashboard, MonitoringState},
     profile::{
-        get_my_profile, get_organizer_stats, get_profile_by_address, patch_profile, upsert_profile,
-        ProfileState,
+        get_my_profile, get_organizer_stats, get_profile_by_address, list_my_transactions,
+        patch_profile, upsert_profile, ProfileState,
     },
     qr_payload::{delete_qr_payload, generate_qr_payload, list_event_qr_codes, list_qr_payloads, mark_qr_used, verify_qr_payload},
     rates::{get_rates, RatesState},
@@ -121,6 +122,7 @@ pub async fn create_routes(pool: PgPool, config: Config, redis: RedisCache) -> R
     // Routes that use Redis caching use ProfileState; stats route keeps PgPool.
     let profile_routes = Router::new()
         .route("/", get(get_my_profile).put(upsert_profile).patch(patch_profile))
+        .route("/transactions", get(list_my_transactions))
         .route("/:address", get(get_profile_by_address))
         .with_state(profile_state)
         .merge(
@@ -153,8 +155,8 @@ pub async fn create_routes(pool: PgPool, config: Config, redis: RedisCache) -> R
     let event_routes = Router::new()
         .route("/", get(list_events))
         .route("/count", get(get_event_counts))
-        .route("/featured", get(list_featured_events))
         .route("/past", get(list_past_events))
+        .route("/upcoming", get(list_upcoming_events))
         .route("/search", get(search_events))
         .route("/:id", get(get_event))
         .route("/:id/attendees/count", get(get_attendee_count))
@@ -176,11 +178,20 @@ pub async fn create_routes(pool: PgPool, config: Config, redis: RedisCache) -> R
         .route("/:id/qr-codes", get(list_event_qr_codes))
         .with_state(pool.clone());
 
-    // Category routes
+    // Category routes — listing is Redis-cached (Issue #583); the single-item
+    // lookup keeps the bare PgPool state.
+    let category_state = CategoryState {
+        pool: pool.clone(),
+        redis: redis.clone(),
+    };
     let category_routes = Router::new()
         .route("/", get(list_categories))
-        .route("/:id", get(get_category))
-        .with_state(pool.clone());
+        .with_state(category_state)
+        .merge(
+            Router::new()
+                .route("/:id", get(get_category))
+                .with_state(pool.clone()),
+        );
 
     let monitoring_auth_state = MonitoringAuthState {
         token: config.monitoring_token.clone(),

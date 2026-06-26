@@ -17,6 +17,7 @@ use uuid::Uuid;
 
 use axum::http::HeaderValue;
 use crate::cache::RedisCache;
+use crate::middleware::audit::AuditMetadata;
 use crate::models::event::{populate_is_free, Event};
 use crate::models::organizer_profile::OrganizerProfile;
 use crate::utils::cursor_pagination::{
@@ -124,11 +125,103 @@ pub struct EventFilters {
 
     /// Filter to return only followers-only events (Issue #ForYou)
     pub followers_only: Option<bool>,
+
+    /// Sort field: `start_time` (default), `created_at`, or `popularity` (minted_tickets)
+    pub sort_by: Option<String>,
+
+    /// Sort direction: `asc` (default) or `desc`
+    pub sort_order: Option<String>,
+}
+
+/// Supported sort fields for event listings.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EventSortBy {
+    StartTime,
+    CreatedAt,
+    Popularity,
+}
+
+impl EventSortBy {
+    fn parse(value: &str) -> Result<Self, String> {
+        match value {
+            "start_time" => Ok(Self::StartTime),
+            "created_at" => Ok(Self::CreatedAt),
+            "popularity" => Ok(Self::Popularity),
+            other => Err(format!(
+                "Invalid sort_by value '{}'. Supported values: start_time, created_at, popularity",
+                other
+            )),
+        }
+    }
+}
+
+/// Sort direction for event listings.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SortOrder {
+    Asc,
+    Desc,
+}
+
+impl SortOrder {
+    fn parse(value: &str) -> Result<Self, String> {
+        match value {
+            "asc" => Ok(Self::Asc),
+            "desc" => Ok(Self::Desc),
+            other => Err(format!(
+                "Invalid sort_order value '{}'. Supported values: asc, desc",
+                other
+            )),
+        }
+    }
+
+    fn sql(self) -> &'static str {
+        match self {
+            Self::Asc => "ASC",
+            Self::Desc => "DESC",
+        }
+    }
+}
+
+/// Validated sort parameters for event listings.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ValidatedEventSort {
+    pub sort_by: EventSortBy,
+    pub sort_order: SortOrder,
+}
+
+impl EventFilters {
+    /// Validate `sort_by` and `sort_order`, applying defaults when omitted.
+    pub fn validate_sort(&self) -> Result<ValidatedEventSort, String> {
+        let sort_by = match self.sort_by.as_deref() {
+            Some(value) => EventSortBy::parse(value)?,
+            None => EventSortBy::StartTime,
+        };
+        let sort_order = match self.sort_order.as_deref() {
+            Some(value) => SortOrder::parse(value)?,
+            None => SortOrder::Asc,
+        };
+        Ok(ValidatedEventSort {
+            sort_by,
+            sort_order,
+        })
+    }
+}
+
+/// Build the ORDER BY clause for event listings.
+fn build_event_order_by_clause(sort: &ValidatedEventSort) -> String {
+    let column = match sort.sort_by {
+        EventSortBy::StartTime => "start_time",
+        EventSortBy::CreatedAt => "created_at",
+        EventSortBy::Popularity => "minted_tickets",
+    };
+    let direction = sort.sort_order.sql();
+    format!("ORDER BY {column} {direction}, id {direction}")
 }
 
 /// Build WHERE clause and return (where_clause, param_count)
 fn build_event_where_clause(
     filters: &EventFilters,
+    sort: &ValidatedEventSort,
     cursor: Option<&EventCursor>,
 ) -> (String, usize) {
     let mut where_clauses = Vec::new();
@@ -213,21 +306,37 @@ fn build_event_where_clause(
         where_clauses.push("followers_only = TRUE".to_string());
     }
 
-    // Cursor condition: (start_time, id) > (cursor.start_time, cursor.id)
+    // Cursor condition for keyset pagination on the active sort column.
     if cursor.is_some() {
         param_count += 1;
-        let st = param_count;
+        let key_param = param_count;
         param_count += 1;
-        let id = param_count;
+        let id_param = param_count;
+
+        let (key_col, key_op, id_op) = match (sort.sort_by, sort.sort_order) {
+            (EventSortBy::StartTime, SortOrder::Asc) => ("start_time", ">", ">"),
+            (EventSortBy::StartTime, SortOrder::Desc) => ("start_time", "<", "<"),
+            (EventSortBy::CreatedAt, SortOrder::Asc) => ("created_at", ">", ">"),
+            (EventSortBy::CreatedAt, SortOrder::Desc) => ("created_at", "<", "<"),
+            (EventSortBy::Popularity, SortOrder::Asc) => ("minted_tickets", ">", ">"),
+            (EventSortBy::Popularity, SortOrder::Desc) => ("minted_tickets", "<", "<"),
+        };
+
         where_clauses.push(format!(
-            "(start_time > ${st} OR (start_time = ${st} AND id > ${id}))",
-            st = st,
-            id = id
+            "({key_col} {key_op} ${key_param} OR ({key_col} = ${key_param} AND id {id_op} ${id_param}))"
         ));
     }
 
     let where_clause = format!("WHERE {}", where_clauses.join(" AND "));
     (where_clause, param_count)
+}
+
+#[cfg(test)]
+fn default_event_sort() -> ValidatedEventSort {
+    ValidatedEventSort {
+        sort_by: EventSortBy::StartTime,
+        sort_order: SortOrder::Asc,
+    }
 }
 
 /// Query parameters for filtering past events.
@@ -288,9 +397,11 @@ mod tests {
             start_date: None,
             end_date: None,
             followers_only: None,
+            sort_by: None,
+            sort_order: None,
         };
 
-        let (where_clause, _) = build_event_where_clause(&filters, None);
+        let (where_clause, _) = build_event_where_clause(&filters, &default_event_sort(), None);
         assert!(
             where_clause.contains("(total_tickets - minted_tickets) >= $1"),
             "where_clause was: {}",
@@ -313,6 +424,8 @@ mod tests {
             start_date: None,
             end_date: None,
             followers_only: None,
+            sort_by: None,
+            sort_order: None,
         };
 
         assert!(filters.organizer_id.is_some());
@@ -334,6 +447,8 @@ mod tests {
             start_date: None,
             end_date: None,
             followers_only: None,
+            sort_by: None,
+            sort_order: None,
         };
         assert_eq!(filters.organizer_wallet.as_deref(), Some("GBXXX"));
     }
@@ -383,6 +498,8 @@ mod tests {
             start_date: None,
             end_date: None,
             followers_only: None,
+            sort_by: None,
+            sort_order: None,
         };
         assert_eq!(filters_free.is_free, Some(true));
 
@@ -398,6 +515,8 @@ mod tests {
             start_date: None,
             end_date: None,
             followers_only: None,
+            sort_by: None,
+            sort_order: None,
         };
         assert_eq!(filters_paid.is_free, Some(false));
 
@@ -413,6 +532,8 @@ mod tests {
             start_date: None,
             end_date: None,
             followers_only: None,
+            sort_by: None,
+            sort_order: None,
         };
         assert_eq!(filters_none.is_free, None);
     }
@@ -431,8 +552,10 @@ mod tests {
             start_date: Some("2026-06-15".to_string()),
             end_date: None,
             followers_only: None,
+            sort_by: None,
+            sort_order: None,
         };
-        let (where_clause, _) = build_event_where_clause(&filters, None);
+        let (where_clause, _) = build_event_where_clause(&filters, &default_event_sort(), None);
         assert!(
             where_clause.contains("start_time >="),
             "Expected start_time >= clause, got: {}",
@@ -454,8 +577,10 @@ mod tests {
             start_date: None,
             end_date: Some("2026-06-20".to_string()),
             followers_only: None,
+            sort_by: None,
+            sort_order: None,
         };
-        let (where_clause, _) = build_event_where_clause(&filters, None);
+        let (where_clause, _) = build_event_where_clause(&filters, &default_event_sort(), None);
         assert!(
             where_clause.contains("start_time <="),
             "Expected start_time <= clause, got: {}",
@@ -477,8 +602,10 @@ mod tests {
             start_date: None,
             end_date: None,
             followers_only: Some(true),
+            sort_by: None,
+            sort_order: None,
         };
-        let (where_clause, _) = build_event_where_clause(&filters, None);
+        let (where_clause, _) = build_event_where_clause(&filters, &default_event_sort(), None);
         assert!(
             where_clause.contains("followers_only = TRUE"),
             "Expected where_clause to contain followers_only = TRUE, got: {}",
@@ -587,6 +714,18 @@ mod tests {
     }
 
     #[test]
+    fn test_upcoming_limit_clamping() {
+        // Default when absent.
+        assert_eq!(None::<u32>.unwrap_or(5).clamp(1, 20), 5);
+        // Values above the max are clamped to 20.
+        assert_eq!(Some(100u32).unwrap_or(5).clamp(1, 20), 20);
+        // Zero is clamped up to the minimum of 1.
+        assert_eq!(Some(0u32).unwrap_or(5).clamp(1, 20), 1);
+        // In-range values pass through.
+        assert_eq!(Some(10u32).unwrap_or(5).clamp(1, 20), 10);
+    }
+
+    #[test]
     fn test_search_params_ticket_type() {
         let params = SearchParams {
             q: None,
@@ -682,6 +821,86 @@ mod tests {
         assert!(row.contains(buyer));
         assert!(row.contains("2"));
     }
+
+    #[test]
+    fn test_build_event_order_by_start_time_default() {
+        let sort = ValidatedEventSort {
+            sort_by: EventSortBy::StartTime,
+            sort_order: SortOrder::Asc,
+        };
+        assert_eq!(
+            build_event_order_by_clause(&sort),
+            "ORDER BY start_time ASC, id ASC"
+        );
+    }
+
+    #[test]
+    fn test_build_event_order_by_created_at_desc() {
+        let sort = ValidatedEventSort {
+            sort_by: EventSortBy::CreatedAt,
+            sort_order: SortOrder::Desc,
+        };
+        assert_eq!(
+            build_event_order_by_clause(&sort),
+            "ORDER BY created_at DESC, id DESC"
+        );
+    }
+
+    #[test]
+    fn test_build_event_order_by_popularity_desc() {
+        let sort = ValidatedEventSort {
+            sort_by: EventSortBy::Popularity,
+            sort_order: SortOrder::Desc,
+        };
+        assert_eq!(
+            build_event_order_by_clause(&sort),
+            "ORDER BY minted_tickets DESC, id DESC"
+        );
+    }
+
+    #[test]
+    fn test_invalid_sort_by_returns_validation_error() {
+        let filters = EventFilters {
+            organizer_id: None,
+            organizer_wallet: None,
+            location: None,
+            start_after: None,
+            start_before: None,
+            search: None,
+            min_tickets_available: None,
+            is_free: None,
+            start_date: None,
+            end_date: None,
+            followers_only: None,
+            sort_by: Some("invalid".to_string()),
+            sort_order: None,
+        };
+
+        let err = filters.validate_sort().unwrap_err();
+        assert!(err.contains("Invalid sort_by value 'invalid'"));
+    }
+
+    #[test]
+    fn test_invalid_sort_order_returns_validation_error() {
+        let filters = EventFilters {
+            organizer_id: None,
+            organizer_wallet: None,
+            location: None,
+            start_after: None,
+            start_before: None,
+            search: None,
+            min_tickets_available: None,
+            is_free: None,
+            start_date: None,
+            end_date: None,
+            followers_only: None,
+            sort_by: Some("created_at".to_string()),
+            sort_order: Some("sideways".to_string()),
+        };
+
+        let err = filters.validate_sort().unwrap_err();
+        assert!(err.contains("Invalid sort_order value 'sideways'"));
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -712,6 +931,8 @@ pub struct SubmitEventRatingResponse {
 /// - `start_before` (optional): Filter events starting before date
 /// - `search` (optional): Search in title and description
 /// - `is_free` (optional): Filter by free events (true = ticket_price = 0, false = ticket_price > 0)
+/// - `sort_by` (optional): Sort field — `start_time` (default), `created_at`, or `popularity`
+/// - `sort_order` (optional): Sort direction — `asc` (default) or `desc`
 ///
 /// # Response
 /// Returns a cursor-paginated list of upcoming events with metadata
@@ -721,6 +942,11 @@ pub async fn list_events(
     Query(filters): Query<EventFilters>,
 ) -> Response {
     let validated = pagination.validate();
+
+    let sort = match filters.validate_sort() {
+        Ok(sort) => sort,
+        Err(message) => return AppError::ValidationError(message).into_response(),
+    };
 
     // Decode cursor if provided
     let cursor = match validated.cursor {
@@ -735,10 +961,10 @@ pub async fn list_events(
     };
 
     // Build the WHERE clause dynamically based on filters
-    let (where_clause, param_count) = build_event_where_clause(&filters, cursor.as_ref());
+    let (where_clause, param_count) = build_event_where_clause(&filters, &sort, cursor.as_ref());
 
     // Count total matching events (no cursor so the number reflects the full filter set).
-    let (count_where, count_param_count) = build_event_where_clause(&filters, None);
+    let (count_where, count_param_count) = build_event_where_clause(&filters, &sort, None);
     let count_query = format!("SELECT COUNT(*) FROM events {}", count_where);
     let mut count_builder = sqlx::query_scalar::<_, i64>(&count_query);
     if let Some(organizer_id) = filters.organizer_id {
@@ -773,10 +999,10 @@ pub async fn list_events(
     };
 
     // Fetch items (limit + 1 to detect has_more)
+    let order_by = build_event_order_by_clause(&sort);
     let items_query = format!(
-        "SELECT * FROM events {} ORDER BY start_time ASC, id ASC LIMIT ${}",
-        where_clause,
-        param_count + 1
+        "SELECT * FROM events {} {} LIMIT ${}",
+        where_clause, order_by, param_count + 1
     );
 
     let mut items_query_builder = sqlx::query_as::<_, Event>(&items_query);
@@ -840,8 +1066,35 @@ pub async fn list_events(
     }
 
     if let Some(ref c) = cursor {
-        items_query_builder = items_query_builder.bind(c.start_time);
-        items_query_builder = items_query_builder.bind(c.id);
+        match sort.sort_by {
+            EventSortBy::StartTime => {
+                items_query_builder = items_query_builder.bind(c.start_time).bind(c.id);
+            }
+            EventSortBy::CreatedAt => {
+                let created_at = match c.created_at {
+                    Some(value) => value,
+                    None => {
+                        return AppError::ValidationError(
+                            "Cursor is missing created_at for created_at sort".to_string(),
+                        )
+                        .into_response();
+                    }
+                };
+                items_query_builder = items_query_builder.bind(created_at).bind(c.id);
+            }
+            EventSortBy::Popularity => {
+                let minted_tickets = match c.minted_tickets {
+                    Some(value) => value,
+                    None => {
+                        return AppError::ValidationError(
+                            "Cursor is missing minted_tickets for popularity sort".to_string(),
+                        )
+                        .into_response();
+                    }
+                };
+                items_query_builder = items_query_builder.bind(minted_tickets).bind(c.id);
+            }
+        }
     }
 
     items_query_builder = items_query_builder.bind(validated.query_limit());
@@ -864,6 +1117,8 @@ pub async fn list_events(
         match encode_cursor(&EventCursor {
             start_time: last.start_time,
             id: last.id,
+            created_at: Some(last.created_at),
+            minted_tickets: Some(last.minted_tickets),
         }) {
             Ok(c) => Some(c),
             Err(e) => {
@@ -884,6 +1139,57 @@ pub async fn list_events(
         resp.headers_mut().insert("X-Total-Count", v);
     }
     resp
+}
+
+/// GET `/api/v1/events/featured`
+///
+/// Placeholder route registered for the featured-events migration; full handler pending.
+pub async fn list_featured_events(
+    State(_state): State<EventState>,
+) -> Response {
+    AppError::NotFound("Featured events are not yet available".to_string()).into_response()
+}
+
+/// Query parameters for `GET /api/v1/events/upcoming`.
+#[derive(Debug, Deserialize)]
+pub struct UpcomingParams {
+    /// Number of events to return (clamped to 1–20, default 5).
+    pub limit: Option<u32>,
+}
+
+/// List the next upcoming events ordered by `start_time ASC`.
+///
+/// A simplified feed for home pages and the mobile app — no cursor contract,
+/// just a single `limit` parameter.
+///
+/// # Endpoint
+/// GET `/api/v1/events/upcoming`
+///
+/// # Query Parameters
+/// - `limit` (optional): Number of events to return (1–20, default 5)
+pub async fn list_upcoming_events(
+    State(state): State<EventState>,
+    Query(params): Query<UpcomingParams>,
+) -> Response {
+    // Clamp limit to 1–20, defaulting to 5.
+    let limit = params.limit.unwrap_or(5).clamp(1, 20) as i64;
+
+    let mut events = match sqlx::query_as::<_, Event>(
+        "SELECT * FROM events WHERE end_time > NOW() AND is_flagged = FALSE ORDER BY start_time ASC LIMIT $1",
+    )
+    .bind(limit)
+    .fetch_all(&state.pool)
+    .await
+    {
+        Ok(events) => events,
+        Err(e) => {
+            tracing::error!("Failed to fetch upcoming events: {:?}", e);
+            return AppError::DatabaseError(e).into_response();
+        }
+    };
+
+    populate_is_free(&mut events, &state.pool).await;
+    success(events, "Upcoming events retrieved successfully").into_response()
 }
 
 /// List completed events with cursor-based pagination and optional filters.
@@ -1409,6 +1715,7 @@ pub async fn search_events(
     State(mut state): State<EventState>,
     Query(params): Query<SearchParams>,
 ) -> Response {
+    let start = std::time::Instant::now();
     let pagination = PaginationParams {
         page: params.page,
         page_size: params.page_size,
@@ -1618,6 +1925,7 @@ pub async fn search_events(
         .bind(validated_pagination.limit())
         .bind(validated_pagination.offset());
 
+    let start = std::time::Instant::now();
     let mut items = match items_query_builder.fetch_all(&state.pool).await {
         Ok(events) => events,
         Err(e) => {
@@ -1651,23 +1959,28 @@ pub async fn toggle_event_flag(
     State(mut state): State<EventState>,
     Path(event_id): Path<Uuid>,
 ) -> Response {
-    // Fetch current flag status
-    let current_flagged =
-        match sqlx::query_scalar::<_, bool>("SELECT is_flagged FROM events WHERE id = $1")
-            .bind(event_id)
-            .fetch_optional(&state.pool)
-            .await
-        {
-            Ok(Some(flagged)) => flagged,
-            Ok(None) => {
-                return AppError::NotFound(format!("Event with id '{}' not found", event_id))
-                    .into_response();
-            }
-            Err(e) => {
-                tracing::error!("Failed to fetch event flag status: {:?}", e);
-                return AppError::DatabaseError(e).into_response();
-            }
-        };
+    // Fetch current flag status and the affected event's organizer wallet so the
+    // audit log can record who was impacted by the moderation action (Issue #586).
+    let (current_flagged, organizer_wallet) = match sqlx::query_as::<_, (bool, Option<String>)>(
+        "SELECT e.is_flagged, o.wallet_address
+         FROM events e
+         LEFT JOIN organizers o ON o.id = e.organizer_id
+         WHERE e.id = $1",
+    )
+    .bind(event_id)
+    .fetch_optional(&state.pool)
+    .await
+    {
+        Ok(Some(row)) => row,
+        Ok(None) => {
+            return AppError::NotFound(format!("Event with id '{}' not found", event_id))
+                .into_response();
+        }
+        Err(e) => {
+            tracing::error!("Failed to fetch event flag status: {:?}", e);
+            return AppError::DatabaseError(e).into_response();
+        }
+    };
 
     // Toggle the flag
     let new_flagged = !current_flagged;
@@ -1687,11 +2000,20 @@ pub async fn toggle_event_flag(
         tracing::warn!("Failed to invalidate cache for event {}: {:?}", event_id, e);
     }
 
-    success(
+    let mut response = success(
         serde_json::json!({ "is_flagged": new_flagged }),
         "Event flag toggled successfully",
     )
-    .into_response()
+    .into_response();
+
+    // Attach the organizer wallet so the audit middleware records it in metadata.
+    if let Some(wallet) = organizer_wallet {
+        response.extensions_mut().insert(AuditMetadata(
+            serde_json::json!({ "organizer_wallet": wallet }),
+        ));
+    }
+
+    response
 }
 
 /// Revenue summary response for an event
@@ -2015,6 +2337,8 @@ fn test_event_filters_deserialization() {
         start_date: None,
         end_date: None,
         followers_only: None,
+        sort_by: None,
+        sort_order: None,
     };
 
     assert!(filters.organizer_id.is_some());
@@ -2036,6 +2360,8 @@ fn test_organizer_wallet_filter() {
         start_date: None,
         end_date: None,
         followers_only: None,
+        sort_by: None,
+        sort_order: None,
     };
     assert_eq!(filters.organizer_wallet.as_deref(), Some("GBXXX"));
 }
@@ -2054,6 +2380,8 @@ fn test_is_free_filter() {
         start_date: None,
         end_date: None,
         followers_only: None,
+        sort_by: None,
+        sort_order: None,
     };
     assert_eq!(filters_free.is_free, Some(true));
 
@@ -2069,6 +2397,8 @@ fn test_is_free_filter() {
         start_date: None,
         end_date: None,
         followers_only: None,
+        sort_by: None,
+        sort_order: None,
     };
     assert_eq!(filters_paid.is_free, Some(false));
 
@@ -2084,6 +2414,8 @@ fn test_is_free_filter() {
         start_date: None,
         end_date: None,
         followers_only: None,
+        sort_by: None,
+        sort_order: None,
     };
     assert_eq!(filters_none.is_free, None);
 }
@@ -2800,6 +3132,8 @@ pub async fn list_events_by_category(
         match encode_cursor(&EventCursor {
             start_time: last.start_time,
             id: last.id,
+            created_at: Some(last.created_at),
+            minted_tickets: Some(last.minted_tickets),
         }) {
             Ok(c) => Some(c),
             Err(e) => {
