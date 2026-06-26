@@ -3,21 +3,30 @@
 //! CRUD operations for organizer-specific metadata stored in `organizer_profiles`.
 //!
 //! ## Endpoints
-//! - `GET  /api/v1/profile`        — fetch the authenticated organizer's profile
-//! - `PUT  /api/v1/profile`        — create or update the authenticated organizer's profile
-//! - `GET  /api/v1/profile/:addr`  — fetch any organizer's public profile by wallet address
+//! - `GET  /api/v1/profile`              — fetch the authenticated organizer's profile
+//! - `PUT  /api/v1/profile`              — create or update the authenticated organizer's profile
+//! - `GET  /api/v1/profile/transactions` — paginated payment history for the authenticated wallet
+//! - `GET  /api/v1/profile/:addr`        — fetch any organizer's public profile by wallet address
 
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::HeaderMap,
     response::{IntoResponse, Response},
     Json,
 };
 use sqlx::{PgPool, Postgres, QueryBuilder};
+use std::time::Duration;
 
+use chrono::{DateTime, Utc};
+use rust_decimal::Decimal;
+use sqlx::FromRow;
+use uuid::Uuid;
+
+use crate::cache::RedisCache;
 use crate::handlers::auth::extract_auth;
 use crate::models::organizer_profile::{OrganizerProfile, UpsertProfileRequest};
 use crate::utils::error::AppError;
+use crate::utils::pagination::{PaginatedResponse, PaginationParams};
 use crate::utils::response::success;
 
 use once_cell::sync::Lazy;
@@ -25,7 +34,16 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Mutex;
-use std::time::{Duration, Instant};
+use std::time::Instant;
+
+const PROFILE_CACHE_TTL: Duration = Duration::from_secs(600);
+
+/// Application state for profile handlers that use Redis caching.
+#[derive(Clone)]
+pub struct ProfileState {
+    pub pool: PgPool,
+    pub redis: RedisCache,
+}
 
 // ---------------------------------------------------------------------------
 // Validation helpers
@@ -101,21 +119,11 @@ pub struct PatchProfileRequest {
     pub socials: Option<Value>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OrganizerProfileResponse {
     #[serde(flatten)]
     pub profile: OrganizerProfile,
     pub total_events: i64,
-}
-
-static PROFILE_CACHE: Lazy<Mutex<HashMap<String, (Instant, OrganizerProfileResponse)>>> =
-    Lazy::new(|| Mutex::new(HashMap::new()));
-
-const PROFILE_CACHE_TTL: Duration = Duration::from_secs(300);
-
-fn invalidate_profile_cache(address: &str) {
-    let mut cache = PROFILE_CACHE.lock().unwrap();
-    cache.remove(address);
 }
 
 fn organizer_total_events_query() -> &'static str {
@@ -141,7 +149,7 @@ fn organizer_total_events_query() -> &'static str {
 /// - `display_name`: required, max 50 chars
 /// - `bio`: optional, max 500 chars
 pub async fn upsert_profile(
-    State(pool): State<PgPool>,
+    State(mut state): State<ProfileState>,
     headers: HeaderMap,
     Json(payload): Json<UpsertProfileRequest>,
 ) -> Response {
@@ -174,7 +182,7 @@ pub async fn upsert_profile(
     .bind(payload.bio.as_deref())
     .bind(payload.avatar_url.as_deref())
     .bind(&payload.socials)
-    .fetch_one(&pool)
+    .fetch_one(&state.pool)
     .await
     {
         Ok(p) => p,
@@ -184,7 +192,10 @@ pub async fn upsert_profile(
         }
     };
 
-    invalidate_profile_cache(&address);
+    let cache_key = format!("profile:{address}");
+    if let Err(e) = state.redis.delete(&cache_key).await {
+        tracing::warn!("Failed to invalidate profile cache for {address}: {:?}", e);
+    }
 
     success(profile, "Profile updated successfully").into_response()
 }
@@ -193,7 +204,7 @@ pub async fn upsert_profile(
 ///
 /// Partially updates the authenticated organizer's profile.
 pub async fn patch_profile(
-    State(pool): State<PgPool>,
+    State(mut state): State<ProfileState>,
     headers: HeaderMap,
     Json(payload): Json<PatchProfileRequest>,
 ) -> Response {
@@ -233,7 +244,7 @@ pub async fn patch_profile(
 
     let profile = match builder
         .build_query_as::<OrganizerProfile>()
-        .fetch_optional(&pool)
+        .fetch_optional(&state.pool)
         .await
     {
         Ok(Some(profile)) => profile,
@@ -247,7 +258,10 @@ pub async fn patch_profile(
         }
     };
 
-    invalidate_profile_cache(&address);
+    let cache_key = format!("profile:{address}");
+    if let Err(e) = state.redis.delete(&cache_key).await {
+        tracing::warn!("Failed to invalidate profile cache for {address}: {:?}", e);
+    }
 
     success(profile, "Profile updated successfully").into_response()
 }
@@ -256,33 +270,108 @@ pub async fn patch_profile(
 ///
 /// Returns the authenticated organizer's own profile.
 /// Returns 404 if no profile has been created yet.
-pub async fn get_my_profile(State(pool): State<PgPool>, headers: HeaderMap) -> Response {
+pub async fn get_my_profile(State(mut state): State<ProfileState>, headers: HeaderMap) -> Response {
     let address = match extract_auth(&headers) {
         Ok(a) => a,
         Err(e) => return e.into_response(),
     };
 
-    fetch_profile_by_address(&pool, &address).await
+    fetch_profile_by_address(&state.pool, &mut state.redis, &address).await
+}
+
+/// Summary of a payment transaction returned by `GET /api/v1/profile/transactions`.
+#[derive(Debug, Clone, Serialize, FromRow)]
+pub struct TransactionSummary {
+    pub id: Uuid,
+    pub event_id: Option<Uuid>,
+    pub amount: Decimal,
+    pub status: String,
+    pub created_at: DateTime<Utc>,
+}
+
+/// `GET /api/v1/profile/transactions`
+///
+/// Returns a paginated list of payment transactions for the authenticated wallet,
+/// ordered by `created_at` descending. Requires a valid JWT.
+pub async fn list_my_transactions(
+    State(state): State<ProfileState>,
+    headers: HeaderMap,
+    Query(pagination): Query<PaginationParams>,
+) -> Response {
+    let address = match extract_auth(&headers) {
+        Ok(a) => a,
+        Err(e) => return e.into_response(),
+    };
+
+    let validated = pagination.validate();
+
+    let total = match sqlx::query_scalar::<_, i64>(
+        r#"
+        SELECT COUNT(*)
+        FROM transactions tr
+        INNER JOIN tickets t ON tr.ticket_id = t.id
+        WHERE t.buyer_wallet = $1
+        "#,
+    )
+    .bind(&address)
+    .fetch_one(&state.pool)
+    .await
+    {
+        Ok(n) => n,
+        Err(e) => {
+            tracing::error!("Failed to count wallet transactions: {:?}", e);
+            return AppError::DatabaseError(e).into_response();
+        }
+    };
+
+    let items = match sqlx::query_as::<_, TransactionSummary>(
+        r#"
+        SELECT
+            tr.id,
+            COALESCE(t.event_id, tt.event_id) AS event_id,
+            tr.amount,
+            tr.status,
+            tr.created_at
+        FROM transactions tr
+        INNER JOIN tickets t ON tr.ticket_id = t.id
+        LEFT JOIN ticket_tiers tt ON t.ticket_tier_id = tt.id
+        WHERE t.buyer_wallet = $1
+        ORDER BY tr.created_at DESC
+        LIMIT $2 OFFSET $3
+        "#,
+    )
+    .bind(&address)
+    .bind(validated.limit())
+    .bind(validated.offset())
+    .fetch_all(&state.pool)
+    .await
+    {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!("Failed to fetch wallet transactions: {:?}", e);
+            return AppError::DatabaseError(e).into_response();
+        }
+    };
+
+    let response = PaginatedResponse::new(items, validated, total);
+    success(response, "Transactions retrieved successfully").into_response()
 }
 
 /// `GET /api/v1/profile/:address`
 ///
 /// Returns any organizer's public profile by their Stellar wallet address.
 pub async fn get_profile_by_address(
-    State(pool): State<PgPool>,
+    State(mut state): State<ProfileState>,
     Path(address): Path<String>,
 ) -> Response {
-    fetch_profile_by_address(&pool, &address).await
+    fetch_profile_by_address(&state.pool, &mut state.redis, &address).await
 }
 
-async fn fetch_profile_by_address(pool: &PgPool, address: &str) -> Response {
-    {
-        let cache = PROFILE_CACHE.lock().unwrap();
-        if let Some((expiry, profile)) = cache.get(address) {
-            if Instant::now() < *expiry {
-                return success(profile.clone(), "Profile retrieved successfully").into_response();
-            }
-        }
+async fn fetch_profile_by_address(pool: &PgPool, redis: &mut RedisCache, address: &str) -> Response {
+    let cache_key = format!("profile:{address}");
+
+    if let Ok(Some(cached)) = redis.get::<OrganizerProfileResponse>(&cache_key).await {
+        return success(cached, "Profile retrieved successfully").into_response();
     }
 
     match sqlx::query_as::<_, OrganizerProfile>(
@@ -310,12 +399,8 @@ async fn fetch_profile_by_address(pool: &PgPool, address: &str) -> Response {
                 total_events,
             };
 
-            {
-                let mut cache = PROFILE_CACHE.lock().unwrap();
-                cache.insert(
-                    address.to_string(),
-                    (Instant::now() + PROFILE_CACHE_TTL, response.clone()),
-                );
+            if let Err(e) = redis.set(&cache_key, &response, PROFILE_CACHE_TTL).await {
+                tracing::warn!("Failed to cache profile for {address}: {:?}", e);
             }
 
             success(response, "Profile retrieved successfully").into_response()
@@ -593,6 +678,40 @@ mod tests {
     }
 
     #[test]
+    fn test_profile_cache_key_format() {
+        let address = "GTEST123WALLETADDRESS";
+        let key = format!("profile:{address}");
+        assert_eq!(key, "profile:GTEST123WALLETADDRESS");
+        assert!(key.starts_with("profile:"));
+    }
+
+    #[test]
+    fn test_profile_cache_ttl_is_10_minutes() {
+        assert_eq!(PROFILE_CACHE_TTL.as_secs(), 600);
+    }
+
+    #[test]
+    fn test_organizer_profile_response_deserializes() {
+        let now = chrono::Utc::now();
+        let response = OrganizerProfileResponse {
+            profile: OrganizerProfile {
+                address: "GABC".to_string(),
+                display_name: "Agora".to_string(),
+                bio: None,
+                avatar_url: None,
+                socials: json!({}),
+                created_at: now,
+                updated_at: now,
+            },
+            total_events: 5,
+        };
+        let json_str = serde_json::to_string(&response).unwrap();
+        let decoded: OrganizerProfileResponse = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(decoded.profile.address, "GABC");
+        assert_eq!(decoded.total_events, 5);
+    }
+
+    #[test]
     fn test_organizer_total_events_query_excludes_flagged_events() {
         let query = organizer_total_events_query();
 
@@ -632,5 +751,25 @@ mod tests {
         assert_eq!(v["data"]["total_events"].as_i64().unwrap(), 2);
         assert_eq!(v["data"]["total_tickets_sold"].as_i64().unwrap(), 100);
         assert!((v["data"]["average_event_rating"].as_f64().unwrap() - 4.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_transaction_summary_serializes_required_fields() {
+        let now = Utc::now();
+        let event_id = Uuid::new_v4();
+        let summary = TransactionSummary {
+            id: Uuid::new_v4(),
+            event_id: Some(event_id),
+            amount: Decimal::new(2500, 2),
+            status: "completed".to_string(),
+            created_at: now,
+        };
+
+        let value = serde_json::to_value(&summary).unwrap();
+        assert!(value.get("id").is_some());
+        assert_eq!(value["event_id"], json!(event_id));
+        assert_eq!(value["amount"], json!("25.00"));
+        assert_eq!(value["status"], json!("completed"));
+        assert!(value.get("created_at").is_some());
     }
 }
